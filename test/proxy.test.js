@@ -11,9 +11,9 @@ function server(handler) {
 const base = (s) => `http://127.0.0.1:${s.address().port}`;
 
 test('isPrivateIp reconhece enderecos locais', () => {
-  for (const ip of ['127.0.0.1', '10.1.2.3', '192.168.0.9', '172.20.1.1', '169.254.1.1', '0.0.0.0', '::1', 'fd00::1', 'fe80::1', '::ffff:127.0.0.1', '100.64.0.1'])
+  for (const ip of ['127.0.0.1', '10.1.2.3', '192.168.0.9', '172.20.1.1', '169.254.1.1', '0.0.0.0', '::1', 'fd00::1', 'fe80::1', '::ffff:127.0.0.1', '::ffff:7f00:1', '0:0:0:0:0:ffff:7f00:1', '0:0::ffff:7f00:1', '::ffff:c0a8:1', '100.64.0.1'])
     assert.ok(isPrivateIp(ip), ip);
-  for (const ip of ['8.8.8.8', '1.1.1.1', '172.32.0.1', '2606:4700::1111'])
+  for (const ip of ['8.8.8.8', '1.1.1.1', '172.32.0.1', '::ffff:808:808', '2606:4700::1111'])
     assert.ok(!isPrivateIp(ip), ip);
 });
 
