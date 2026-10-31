@@ -37,14 +37,20 @@ jobs:
         if: env.HAS_CERT != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --win --publish always -c.extraMetadata.version=${{ env.VERSAO }}
+        shell: bash
+        run: |
+          set -o pipefail
+          npx electron-builder --win --publish always -c.extraMetadata.version=${{ env.VERSAO }} 2>&1 | tee build.log || { tail -n 40 build.log | sed 's/\r//' | awk 'BEGIN{ORS="%0A"}{print}' | sed 's/^/::error title=Erro no electron-builder::/'; echo; exit 1; }
       - name: Gerar e publicar (assinado)
         if: env.HAS_CERT == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_PASSWORD }}
-        run: npx electron-builder --win --publish always -c.extraMetadata.version=${{ env.VERSAO }}
+        shell: bash
+        run: |
+          set -o pipefail
+          npx electron-builder --win --publish always -c.extraMetadata.version=${{ env.VERSAO }} 2>&1 | tee build.log || { tail -n 40 build.log | sed 's/\r//' | awk 'BEGIN{ORS="%0A"}{print}' | sed 's/^/::error title=Erro no electron-builder::/'; echo; exit 1; }
       - uses: actions/upload-artifact@v4
         with:
           name: ASC-DESK-instalador
