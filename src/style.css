@@ -104,7 +104,7 @@ main{overflow-y:auto;padding:.6em 1.4em 2em;overscroll-behavior:contain;scroll-b
 .rb.l{left:.7em}.rb.r{right:.7em}
 .rw:hover .rb{opacity:1;transform:scale(1)}.rb:hover{background:var(--p);border-color:transparent}
 /* ---------- janelas (folhas) ---------- */
-#sheet{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;animation:fd .18s}
+#sheet{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;animation:fd .18s}
 #sh{background:linear-gradient(180deg,rgba(32,24,28,.97),rgba(20,15,18,.98));border:1px solid var(--ln);border-radius:26px;width:min(38em,calc(100% - 3em));max-height:84vh;overflow:auto;padding:1.4em;display:flex;flex-direction:column;gap:.6em;box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 60px rgba(var(--ar),.14);animation:pop .28s var(--ease)}
 @keyframes pop{from{opacity:0;transform:translateY(18px) scale(.95)}}
 #sh>b{font-size:1.15em}
@@ -157,6 +157,7 @@ video{width:100%;height:100%;background:#000;object-fit:contain;transform:transl
 #tm{display:flex;gap:.4em;font-size:.86em;color:#e8e8ea;font-variant-numeric:tabular-nums;margin-left:.4em}
 #vol{-webkit-appearance:none;appearance:none;width:7em;height:5px;padding:0;border:0;border-radius:9px;background:linear-gradient(90deg,#fff var(--v,100%),rgba(255,255,255,.25) var(--v,100%));cursor:pointer;box-shadow:none}
 #vol::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 0 10px rgba(var(--ar),.9)}
+#quality{padding:.45em .7em;color:#fff;background:rgba(255,255,255,.1);font-size:.82em;font-variant-numeric:tabular-nums}
 #lv{display:flex;align-items:center;gap:.5em;font-weight:800;font-size:.8em;letter-spacing:.06em;padding:.4em 0}.dot{width:.7em;height:.7em;border-radius:50%;background:var(--a1);box-shadow:0 0 10px var(--a1);animation:pl 1.6s ease-in-out infinite}
 @keyframes pl{50%{opacity:.3}}
 #pt{font-size:1.15em;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#pe{font-size:.85em;color:#d8d8dc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

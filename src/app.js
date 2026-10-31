@@ -314,6 +314,13 @@ let mp=null,MLP;const TSU=/\.ts(\?|$)/i,mpOff=()=>{if(mp){try{mp.destroy()}catch
 ML=()=>window.mpegts?Promise.resolve():(MLP=MLP||new Promise(r=>{const s=document.createElement('script');s.src='vendor/mpegts.min.js';s.onload=s.onerror=()=>r();document.head.append(s)}));
 let viaNat=false,hlsLv=false,HLP,gen=0,wd=null,lastT=-1,stuck=0,rc=0,started=false,UP=false;
 const HL=()=>window.Hls?Promise.resolve():(HLP=HLP||new Promise(r=>{const s=document.createElement('script');s.src='vendor/hls.min.js';s.onload=s.onerror=()=>r();document.head.append(s)}));
+const qualityLevels=player=>{const levels=new Map();(player&&player.levels||[]).forEach((level,index)=>{const height=Number(level.height);if(!height)return;const previous=levels.get(height);if(!previous||Number(level.bitrate)>Number(previous.bitrate))levels.set(height,{height,index,bitrate:Number(level.bitrate)||0})});return[...levels.values()].sort((a,b)=>a.height-b.height)};
+function qualityApply(player=hls){const button=$('#quality'),levels=qualityLevels(player);if(!player||levels.length<2){button.hidden=true;if(player)player.currentLevel=-1;return}
+ const wanted=LS.asc_quality||'auto';button.hidden=false;if(wanted=='auto'){player.currentLevel=-1;button.textContent='Auto';button.setAttribute('aria-label','Qualidade: automática');return}
+ const target=Number(wanted),choice=levels.filter(x=>x.height<=target).pop()||levels[0];player.currentLevel=choice.index;button.textContent=choice.height+'p';button.setAttribute('aria-label','Qualidade: '+choice.height+'p')}
+function qualityMenu(){if(!hls)return;const levels=qualityLevels(hls);if(levels.length<2)return;ui();const preferred=LS.asc_quality||'auto',current=preferred=='auto'?'auto':String((levels.filter(x=>x.height<=Number(preferred)).pop()||levels[0]).height);
+ sh('<b>Qualidade do vídeo</b><button class="btn'+(current=='auto'?' p':'')+'" data-q="auto">Automática</button>'+levels.slice().reverse().map(x=>`<button class="btn${current==String(x.height)?' p':''}" data-q="${x.height}">${x.height}p</button>`).join(''));
+ $('#sh').onclick=e=>{const option=e.target.closest('[data-q]');if(!option)return;LS.asc_quality=option.dataset.q;qualityApply();$('#sheet').hidden=true;$('#quality').focus();ui()}}
 /* Canais Xtream: o mesmo canal pode existir como .m3u8 e/ou .ts. Guardamos as variantes e passamos para a próxima se o servidor responder 404/403 */
 const XL=/^(https?:\/\/[^/]+\/(?:live\/)?[^/]+\/[^/]+\/\d+)(\.m3u8|\.ts)?(\?.*)?$/i;
 let CAND=[],ci=0,PREFX=0;
@@ -334,7 +341,7 @@ function src(u,at,fresh,forceNat){const g=++gen;if(live())u=CAND[ci]||u;UP=false
   if(!forceNat&&window.Hls&&Hls.isSupported()&&!/\.(mp4|mkv|avi|mov)(\?|$)/i.test(u)){
    hlsLv=live();let LD={};try{if(nat())LD={loader:pld()}}catch{}
    const h=hls=new Hls(Object.assign(HC(hlsLv),LD,at>0?{startPosition:at}:{}));h.loadSource(u);h.attachMedia(V);
-   h.on(Hls.Events.MANIFEST_PARSED,()=>V.play().catch(()=>{}));
+    h.on(Hls.Events.MANIFEST_PARSED,()=>{qualityApply(h);V.play().catch(()=>{})});
    h.on(Hls.Events.ERROR,(_,d)=>{if(h!=hls)return;const cd=d.response&&d.response.code,bad=d.fatal||d.details=='manifestLoadError'||d.details=='manifestLoadTimeOut';
     if(live()&&!started&&d.details!='manifestParsingError'&&(d.fatal||[401,403,404,410].includes(cd))&&nextCand())return;
     if(bad)dbg('Canal '+((CAND[ci]||'').match(/\.(m3u8|ts)(\?|$)/i)||[,'?'])[1]+': '+d.details+(cd?' (HTTP '+cd+')':''));if(!d.fatal)return;
@@ -362,7 +369,7 @@ function recover(){if(P.hidden||!cur)return;stuck=0;const n=++rc;
  if(hls&&n%3){if(n%3==1)hls.startLoad(-1);else hls.recoverMediaError();V.play().catch(()=>{});return}
  src(cur.u,live()?0:V.currentTime,1,viaNat&&live())}
 addEventListener('online',()=>{if(!P.hidden&&cur){rc=0;recover()}});
-function play(it,list,from){cur=it;CAND=it.t=='tv'?cands(it.u):[it.u];ci=0;zap=list&&list.length?list:[it];ori('landscape');bars(true);if(P.hidden)history.pushState({p:1},'');P.hidden=false;const tv=live();
+function play(it,list,from){cur=it;CAND=it.t=='tv'?cands(it.u):[it.u];ci=0;zap=list&&list.length?list:[it];ori('landscape');bars(true);if(P.hidden)history.pushState({p:1},'');P.hidden=false;$('#quality').hidden=true;const tv=live();
  $('#pt').textContent=it.n;ic('#pv',tv?'sprev':'rw10');ic('#nx',tv?'snext':'fw10');ic('#pp','pause');$('#lv').hidden=!tv;UP=false;$('#sk').hidden=tv;$('#tm').hidden=tv;
  $('#pr').style.width=$('#bf').style.width='0';$('#th').style.left='0';$('#t1').textContent=$('#t2').textContent='0:00';
  $('#pf').classList.toggle('on',S.fav.includes(favK(it)));spin(true);src(it.u);wdOn();epgBar();ui();
@@ -388,6 +395,7 @@ sk.onpointerup=e=>{if(dr){const f=seekTo(e);dr=0;if(V.duration)V.currentTime=f*V
 const close=pop=>{saveP();wdOff();gen++;ori(S.dev=='tv'?'landscape':'portrait');bars(false);if(hls){hls.destroy();hls=null}mpOff();UP=true;V.pause();V.removeAttribute('src');V.load();P.hidden=true;spin(false);if(S.tab=='fav'||S.tab=='home')render();if(pop!==1&&history.state&&history.state.p)history.back()};
 $('#bk').onclick=()=>close();
 const vol=$('#vol'),isFs=()=>document.fullscreenElement===P;
+$('#quality').onclick=qualityMenu;
 const volUi=()=>{vol.value=V.muted?0:V.volume;vol.style.setProperty('--v',(V.muted?0:V.volume)*100+'%');ic('#mu',V.muted||V.volume==0?'imute':'ivol');LS.asc_vol=String(V.volume)};
 V.onvolumechange=volUi;V.volume=isFinite(+LS.asc_vol)&&LS.asc_vol!=null&&LS.asc_vol!==''?Math.min(1,Math.max(0,+LS.asc_vol)):1;volUi();
 vol.oninput=()=>{V.muted=false;V.volume=+vol.value};
@@ -412,6 +420,7 @@ const BACK=['Escape','Backspace','GoBack','BrowserBack'];
 addEventListener('keydown',e=>{const k=e.key;
  if(!LK.hidden){if(/^\d$/.test(k)){e.preventDefault();pinKey(k)}else if(k=='Backspace'){e.preventDefault();pinKey('x')}else if((k=='Escape'||k=='GoBack'||k=='BrowserBack'||e.keyCode==4)&&pinCan){e.preventDefault();pinCancel()}else if(S.dev=='tv'&&k.startsWith('Arrow'))nvg(e,LK);return}
  if(!P.hidden){const hid=P.classList.contains('h'),onb=document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#player button');ui();
+  if(!$('#sheet').hidden&&BACK.includes(k)){e.preventDefault();$('#sheet').hidden=true;$('#quality').focus();return}
   if(k=='Escape'&&isFs())return;
   if(BACK.includes(k)||e.keyCode==4){e.preventDefault();return close()}
   if(k=='f'||k=='F'||k=='F11'){e.preventDefault();return togFs()}
