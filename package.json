@@ -1,0 +1,70 @@
+{
+  "name": "asc-desk",
+  "productName": "ASC DESK",
+  "version": "1.0.0",
+  "description": "ASC DESK - player IPTV para Windows",
+  "main": "main.js",
+  "private": true,
+  "author": "ASC",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/proxy.test.js",
+    "vendor": "node scripts/vendor.js",
+    "postinstall": "node scripts/vendor.js",
+    "dist": "electron-builder --win --publish never",
+    "test:ui": "node test/ui.mjs"
+  },
+  "dependencies": {
+    "electron-updater": "6.3.9",
+    "mpegts.js": "1.7.3"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "com.ascdesk.app",
+    "productName": "ASC DESK",
+    "copyright": "ASC DESK",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "lib/**",
+      "src/**",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "ASC-DESK-Setup-${version}.exe",
+      "shortcutName": "ASC DESK",
+      "runAfterFinish": true
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "mundoarkade1-arch",
+        "repo": "asc-desk",
+        "releaseType": "release"
+      }
+    ]
+  }
+}

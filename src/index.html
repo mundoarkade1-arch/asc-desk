@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: data:; connect-src 'self'; font-src 'self'; worker-src blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>ASC DESK</title><link rel="icon" href="icon.png">
+<link rel="stylesheet" href="style.css"></head><body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="tv" viewBox="0 0 24 24"><path d="M3 6h18v12H3zM8 21h8M9 3l3 3 3-3"/></symbol>
+<symbol id="film" viewBox="0 0 24 24"><path d="M4 4h16v16H4zM8 4v16M16 4v16M4 9h4M4 15h4M16 9h4M16 15h4"/></symbol>
+<symbol id="series" viewBox="0 0 24 24"><path d="M3 8h18v12H3zM7 4h10M10 12l5 3-5 3z"/></symbol>
+<symbol id="star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></symbol>
+<symbol id="gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></symbol>
+<symbol id="phone" viewBox="0 0 24 24"><path d="M7 2h10v20H7zM11 19h2"/></symbol>
+<symbol id="fit" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+<symbol id="ihome" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/></symbol>
+<symbol id="back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+<symbol id="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+<symbol id="play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5v14l11-7z"/></symbol>
+<symbol id="pause" viewBox="0 0 24 24"><path fill="currentColor" d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></symbol>
+<symbol id="sprev" viewBox="0 0 24 24"><path fill="currentColor" d="M6 5h2.5v14H6zM19 5v14L9.5 12z"/></symbol>
+<symbol id="snext" viewBox="0 0 24 24"><path fill="currentColor" d="M15.5 5H18v14h-2.5zM5 5l9.5 7L5 19z"/></symbol>
+<symbol id="rw10" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.6-5.9M4 3.5V8h4.5"/><text x="12" y="15.4" font-size="7.5" text-anchor="middle" fill="currentColor" stroke="none" font-weight="700">10</text></symbol>
+<symbol id="fw10" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9M20 3.5V8h-4.5"/><text x="12" y="15.4" font-size="7.5" text-anchor="middle" fill="currentColor" stroke="none" font-weight="700">10</text></symbol>
+<symbol id="ilist" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+<symbol id="ishield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6zM9 12l2 2 4-4"/></symbol>
+<symbol id="ical" viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"/></symbol>
+<symbol id="ilock" viewBox="0 0 24 24"><path d="M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+<symbol id="iupd" viewBox="0 0 24 24"><path d="M12 4v10M8 10l4 4 4-4M5 20h14"/></symbol>
+<symbol id="iclr" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9 9l6 6M15 9l-6 6"/></symbol>
+<symbol id="itrash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></symbol>
+<symbol id="iinfo" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v6M12 7.5h.01"/></symbol>
+<symbol id="iver" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8zM7.5 8h.01"/></symbol>
+<symbol id="iepg" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></symbol>
+<symbol id="iswap" viewBox="0 0 24 24"><path d="M7 7h13M17 3l4 4-4 4M17 17H4M7 13l-4 4 4 4"/></symbol>
+<symbol id="ifolder" viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v11H3z"/></symbol>
+<symbol id="iscreen" viewBox="0 0 24 24"><path d="M3 5h18v11H3zM8 20h8M12 16v4"/></symbol>
+<symbol id="ipalette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.8 1.8-1.7 0-1.2-1-1.4-1-2.5 0-.9.7-1.6 1.6-1.6H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3zM7.5 12h.01M9 8h.01M14 7.5h.01M17 10.5h.01"/></symbol>
+<symbol id="ivol" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></symbol>
+<symbol id="imute" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM17 9l5 6M22 9l-5 6"/></symbol>
+<symbol id="ifs" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+<symbol id="ifsx" viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></symbol>
+<symbol id="ipip" viewBox="0 0 24 24"><path d="M3 5h18v14H3zM12 12h7v5h-7z"/></symbol>
+</defs></svg>
+
+<section class="scr" id="boot"><img class="brand" src="icon.png" alt="" width="96" height="96"><div class="logo" style="font-size:2.2em">ASC DESK</div><p id="bm">Carregando…</p>
+ <div class="row" id="br" hidden><button class="btn p" id="b1">Tentar de novo</button><button class="btn" id="b2">Apagar dados locais</button></div></section>
+
+<section class="scr" id="add" hidden>
+ <img class="brand" src="icon.png" alt="" width="72" height="72" style="width:4.5em;height:4.5em"><div class="logo" style="font-size:2em">ASC DESK</div>
+ <h1 style="font-size:1.6em">Como você quer entrar?</h1>
+ <div class="row"><button class="btn p" id="m1">Servidor e login</button><button class="btn" id="m2">Lista M3U</button></div>
+ <input id="ln" placeholder="Nome da lista (opcional)" maxlength="40" autocomplete="off">
+ <div class="fm" id="xt">
+  <input id="xs" placeholder="Servidor (ex.: http://servidor.com:8080)" inputmode="url" autocapitalize="none" autocomplete="off">
+  <input id="xu" placeholder="Login" autocapitalize="none" autocomplete="off">
+  <input id="xp" type="password" placeholder="Senha" autocapitalize="none" autocomplete="off">
+  <button class="btn p" id="xg">Entrar</button>
+ </div>
+ <div class="fm" id="ml" hidden>
+  <input id="u" placeholder="Link da lista (http://...)" inputmode="url">
+  <input id="e" placeholder="Link do EPG/XMLTV (opcional)" inputmode="url">
+  <div class="row"><button class="btn p" id="go">Carregar lista</button>
+  <label class="btn" tabindex="0" id="fl">Abrir arquivo<input type="file" id="f" accept=".m3u,.m3u8,.txt" hidden></label>
+  <button class="btn" id="pa">Colar texto</button></div>
+  <textarea id="ta" rows="5" placeholder="Cole aqui o conteúdo da lista" hidden></textarea>
+ </div>
+ <p id="st"></p>
+ <button class="btn" id="ac" hidden>Voltar</button>
+</section>
+
+<section class="scr" id="lock" hidden>
+ <div class="logo" style="font-size:2.2em">ASC DESK</div>
+ <h1 id="lt" style="font-size:1.3em"></h1><div id="ld"></div><p id="lm"></p>
+ <div id="kp"><button class="btn" data-k="1">1</button><button class="btn" data-k="2">2</button><button class="btn" data-k="3">3</button><button class="btn" data-k="4">4</button><button class="btn" data-k="5">5</button><button class="btn" data-k="6">6</button><button class="btn" data-k="7">7</button><button class="btn" data-k="8">8</button><button class="btn" data-k="9">9</button><button class="btn" data-k="x">⌫</button><button class="btn" data-k="0">0</button><button class="btn p" data-k="ok">OK</button></div>
+ <div class="row"><button class="btn" id="lc" hidden>Cancelar</button></div>
+</section>
+<div id="cover" hidden></div>
+<section class="scr" id="blk" hidden><div class="logo" style="font-size:2.2em">ASC DESK</div><h1 style="font-size:1.4em" id="bt">Ambiente inseguro</h1><p id="bp">Por segurança, o app não abre com um depurador conectado. Desconecte-o e abra o app de novo.</p></section>
+
+<div id="app" hidden>
+ <nav>
+  <div class="nb"><img class="brand s" src="icon.png" alt="" width="36" height="36"><span class="logo">ASC DESK</span></div>
+  <button data-t="home"><svg class="i"><use href="#ihome"/></svg><span>Início</span></button>
+  <button data-t="tv"><svg class="i"><use href="#tv"/></svg><span>Canais</span></button>
+  <button data-t="movie"><svg class="i"><use href="#film"/></svg><span>Filmes</span></button>
+  <button data-t="series"><svg class="i"><use href="#series"/></svg><span>Séries</span></button>
+  <button data-t="fav"><svg class="i"><use href="#star"/></svg><span>Favoritos</span></button>
+  <i class="sp"></i>
+  <button id="cfg"><svg class="i"><use href="#gear"/></svg><span>Ajustes</span></button>
+ </nav>
+ <header><input id="q" type="search" placeholder="Buscar canais, filmes e séries…  ( / )" aria-label="Buscar" autocomplete="off"></header>
+ <div id="exp" hidden><span id="et"></span><button class="chip" id="ex" aria-label="Fechar">✕</button></div>
+ <button class="chip catb" id="catb" hidden><span id="cl">Todas as categorias</span><svg class="i" style="width:1.1em;height:1.1em"><use href="#chev"/></svg></button>
+ <main id="main"><div id="home" hidden></div><div id="grid"></div><div id="more" style="height:1px"></div></main>
+</div>
+<div id="tip" hidden></div>
+<div id="sheet" hidden><div id="sh"></div></div>
+
+<div id="player" hidden>
+ <video id="v" playsinline poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
+ <div id="sp"><svg viewBox="0 0 50 50"><defs><linearGradient id="sg"><stop offset="0" stop-color="#e50914"/><stop offset="1" stop-color="#fff"/></linearGradient></defs><circle cx="25" cy="25" r="20" fill="none" stroke="url(#sg)" stroke-width="4" stroke-linecap="round" stroke-dasharray="80 60"/></svg></div>
+ <div class="ov" id="ot"><button class="gb" id="bk" aria-label="Voltar" title="Voltar (Esc)"><svg class="i"><use href="#back"/></svg></button><div style="flex:1;min-width:0"><b id="pt"></b><div id="pe"></div></div><button class="gb" id="pf" aria-label="Favoritar" title="Favoritar"><svg class="i"><use href="#star"/></svg></button></div>
+ <div class="ov" id="ob">
+  <div id="lv" hidden><span class="dot"></span>AO VIVO</div><div id="epg" hidden></div>
+  <div id="sk"><div id="tr"><i id="bf"></i><i id="pr"></i></div><b id="th"></b></div>
+  <div id="ct">
+   <button class="gb" id="pv" aria-label="Anterior" title="Anterior / -10 s"><svg class="i"><use href="#rw10"/></svg></button>
+   <button class="gb big" id="pp" aria-label="Pausar ou continuar" title="Pausar / continuar (Espaço)"><svg class="i"><use href="#pause"/></svg></button>
+   <button class="gb" id="nx" aria-label="Próximo" title="Próximo / +10 s"><svg class="i"><use href="#fw10"/></svg></button>
+   <div id="tm"><span id="t1">0:00</span><span>/</span><span id="t2">0:00</span></div>
+   <i class="sp"></i>
+   <button class="gb" id="mu" aria-label="Mudo" title="Mudo (M)"><svg class="i"><use href="#ivol"/></svg></button>
+   <input id="vol" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume">
+   <button class="gb" id="fit" aria-label="Ajustar imagem" title="Preencher / ajustar"><svg class="i"><use href="#iscreen"/></svg></button>
+   <button class="gb" id="pip" aria-label="Imagem sobre imagem" title="Janela flutuante (P)"><svg class="i"><use href="#ipip"/></svg></button>
+   <button class="gb" id="fs" aria-label="Tela cheia" title="Tela cheia (F)"><svg class="i"><use href="#ifs"/></svg></button>
+  </div>
+ </div>
+</div>
+
+<script src="recovery.js" defer></script>
+<script src="shim.js"></script>
+<script src="app.js" defer></script></body></html>

@@ -1,0 +1,51 @@
+name: Gerar instalador (Windows)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      VERSAO: 1.0.${{ github.run_number }}
+      WIN_CSC: ${{ secrets.WIN_CSC_LINK }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Instalar dependencias
+        run: npm install --no-audit --no-fund
+      - name: Testes do nucleo de rede
+        run: npm test
+      - name: Conferir bibliotecas de video
+        shell: bash
+        run: |
+          test -s src/vendor/hls.min.js
+          test -s src/vendor/mpegts.min.js
+          ls -la src/vendor
+      - name: Certificado de assinatura (opcional)
+        shell: bash
+        run: |
+          if [ -n "$WIN_CSC" ]; then echo "HAS_CERT=true" >> "$GITHUB_ENV"; else echo "::warning::Sem certificado (secret WIN_CSC_LINK): instalador sem assinatura, o Windows pode mostrar o aviso do SmartScreen."; fi
+      - name: Gerar e publicar (sem assinatura)
+        if: env.HAS_CERT != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --publish always -c.extraMetadata.version=${{ env.VERSAO }}
+      - name: Gerar e publicar (assinado)
+        if: env.HAS_CERT == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_PASSWORD }}
+        run: npx electron-builder --win --publish always -c.extraMetadata.version=${{ env.VERSAO }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ASC-DESK-instalador
+          path: dist/*.exe
