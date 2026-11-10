@@ -51,7 +51,7 @@ async function wipeAll(){try{const N=plug('Secure');N&&nat()&&await tmo(N.reset(
  try{await new Promise(r=>{const q=indexedDB.deleteDatabase('asc');q.onsuccess=q.onerror=q.onblocked=()=>r()})}catch{}
  try{LS.clear();sessionStorage.clear()}catch{}
  location.reload()}
-const ACN={r:'Vermelho',b:'Azul',v:'Roxo',g:'Verde',o:'Laranja'},ACC=()=>ACN[LS.asc_ac]?LS.asc_ac:'r';
+const ACN={r:'Gelo',b:'Azul',v:'Roxo',g:'Verde',o:'Laranja'},ACC=()=>ACN[LS.asc_ac]?LS.asc_ac:'r';
 const accApply=()=>document.documentElement.dataset.ac=ACC();accApply();
 const toast=(m,q)=>{document.querySelectorAll('#toast').forEach(x=>x.remove());const t=document.createElement('div');t.id='toast';if(q)t.className='q';t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),q?2200:4000)};
 const show=id=>{window.__ascBooted=1;$('#boot').hidden=true;['add','app'].forEach(x=>$('#'+x).hidden=x!=id)};
@@ -180,7 +180,7 @@ G.addEventListener('keydown',e=>{if(e.key=='Enter'&&e.target.classList.contains(
 /* EPG ao passar o mouse / focar (TV) */
 const tip=$('#tip');
 function tipOn(e){const c=e.target.closest&&e.target.closest('.card.tv');if(!c)return;const it=itemOf(c);if(!it)return;const x=epgOf(it);
- tip.innerHTML=`<b>${esc(it.n)}</b>`+(x?`<div>${esc(x.p.t)}</div><div class="bar"><i style="width:${Math.min(100,(Date.now()-x.p.s)/(x.p.e-x.p.s)*100)}%"></i></div><small>${hm(x.p.s)} – ${hm(x.p.e)}</small>${x.nx?`<div style="color:#a39a9d;margin-top:.4em">A seguir: ${esc(x.nx.t)} (${hm(x.nx.s)})</div>`:''}`:'<div style="color:#a39a9d">Programação indisponível</div>');
+ tip.innerHTML=`<b>${esc(it.n)}</b>`+(x?`<div>${esc(x.p.t)}</div><div class="bar"><i style="width:${Math.min(100,(Date.now()-x.p.s)/(x.p.e-x.p.s)*100)}%"></i></div><small>${hm(x.p.s)} – ${hm(x.p.e)}</small>${x.nx?`<div style="color:var(--m);margin-top:.4em">A seguir: ${esc(x.nx.t)} (${hm(x.nx.s)})</div>`:''}`:'<div style="color:var(--m)">Programação indisponível</div>');
  const r=c.getBoundingClientRect();tip.hidden=false;tip.style.left=Math.max(8,Math.min(innerWidth-tip.offsetWidth-8,r.left))+'px';
  tip.style.top=(r.bottom+tip.offsetHeight+8>innerHeight?Math.max(8,r.top-tip.offsetHeight-8):r.bottom+8)+'px'}
 const MN=$('#main');MN.addEventListener('pointerover',e=>e.pointerType=='mouse'&&tipOn(e));MN.addEventListener('focusin',tipOn);
@@ -196,7 +196,7 @@ async function meta(it,isS){const A=xapi();if(!A)return;
  try{if(!isS){const id=(it.u.match(/\/movie\/[^/]+\/[^/]+\/(\d+)/)||[])[1];if(!id)return;const i=(await(await tf(A+'&action=get_vod_info&vod_id='+id)).json()).info||{};
    return{p:i.plot||i.description,m:[i.genre,(i.releasedate||'').slice(0,4),i.duration,i.rating&&'★ '+i.rating].filter(Boolean).join(' • ')}}
   const x=(await gs()).get(nz(it.n));return x&&{p:x.plot,m:[x.genre,(x.releaseDate||x.release_date||'').slice(0,4),x.rating&&'★ '+x.rating].filter(Boolean).join(' • ')}}catch{}}
-const hdr=it=>`<div class="dt">${it.l?`<img src="${esc(PX(it.l))}" alt="">`:''}<div><b>${esc(it.n)}</b><small style="display:block;color:#a39a9d">${esc(it.g)}</small><small id="my" style="color:#a39a9d"></small><p class="sy" id="sy">${esc(it.p||'Sem sinopse disponível.')}</p></div></div>`;
+const hdr=it=>`<div class="dt">${it.l?`<img src="${esc(PX(it.l))}" alt="">`:''}<div><b>${esc(it.n)}</b><small style="display:block;color:var(--m)">${esc(it.g)}</small><small id="my" style="color:var(--m)"></small><p class="sy" id="sy">${esc(it.p||'Sem sinopse disponível.')}</p></div></div>`;
 async function fillMeta(it,s){const x=await meta(it,s);if(x&&$('#sy')){if(x.p)$('#sy').textContent=x.p;if(x.m)$('#my').textContent=x.m}}
 /* progresso: asc_pos[u]={t,d,done}; asc_last[serie]=url do ultimo episodio visto */
 const favK=it=>it.t=='series'?'S:'+(it.eps?it.n:title(it.n)):it.u;
@@ -228,14 +228,14 @@ function eps(s){const m={};for(const e of s.eps)(m[seas(e)]||=[]).push(e);
   else if(b.dataset.u){$('#sheet').hidden=true;resume(flat.find(x=>x.u==b.dataset.u),flat)}};fillMeta(s,1)}
 $('#catb').onclick=()=>{const m=new Map();for(const i of (S.by[S.tab]||[])){{let z=m.get(i.g);if(!z)m.set(i.g,z=new Set());z.add(S.tab=='series'?title(i.n):i.u)}}
  const lk=g=>PAR.on&&adCat(g)?'<svg class="i" style="width:1.1em;height:1.1em;margin-right:.4em"><use href="#ilock"/></svg>':'';
- sh('<b>Categorias</b><button class="btn" data-c="Todos">Todas as categorias</button>'+[...m].map(([g,z])=>`<button class="btn" data-c="${esc(g)}">${lk(g)}<span>${esc(g)}</span><small style="margin-left:auto;color:#a39a9d">${z.size}</small></button>`).join(''));
+ sh('<b>Categorias</b><button class="btn" data-c="Todos">Todas as categorias</button>'+[...m].map(([g,z])=>`<button class="btn" data-c="${esc(g)}">${lk(g)}<span>${esc(g)}</span><small style="margin-left:auto;color:var(--m)">${z.size}</small></button>`).join(''));
  $('#sh').onclick=async e=>{const b=e.target.closest('[data-c]');if(!b)return;const c=b.dataset.c;$('#sheet').hidden=true;
   if(PAR.on&&adCat(c)){if(S.adOk!=c){if(!await parAsk())return;S.adOk=c}}else S.adOk='';
   S.cat=c;nav();render()}};
 /* ---------- Ajustes (grade de 3 por linha) ---------- */
 const arm=(id,fn)=>{const b=$(id),sp=b.querySelector('span'),t0=sp.textContent;let on=0,tm;b.onclick=()=>{if(on){clearTimeout(tm);fn();return}on=1;b.classList.add('arm');sp.textContent='Toque de novo para confirmar';tm=setTimeout(()=>{on=0;b.classList.remove('arm');sp.textContent=t0},4000)}};
 async function aboutSheet(){const v=await ver();
- sh(`<b>ASC play</b><small style="color:#a39a9d">${v?'Versão '+esc(v.name)+' (código '+esc(v.code)+')':'Versão indisponível.'}</small><p class="sy" style="max-height:none">Player de listas IPTV (M3U e servidor com login). Você cadastra a sua lista: o app não inclui nem fornece canais, filmes ou séries.</p><p class="sy" style="max-height:none">Seus logins e listas ficam criptografados neste aparelho.</p><small style="color:#a39a9d">Projeto: ${esc(REPO)}</small>`)}
+ sh(`<b>ASC DESK</b><small style="color:var(--m)">${v?'Versão '+esc(v.name)+' (código '+esc(v.code)+')':'Versão indisponível.'}</small><p class="sy" style="max-height:none">Player de listas IPTV (M3U e servidor com login). Você cadastra a sua lista: o app não inclui nem fornece canais, filmes ou séries.</p><p class="sy" style="max-height:none">Seus logins e listas ficam criptografados neste aparelho.</p><small style="color:var(--m)">Projeto: ${esc(REPO)}</small>`)}
 $('#cfg').onclick=()=>{const e=expAt(),d=e?daysTo(e):0,
  T=(id,ic,l,s,c)=>`<button class="tile${c?' '+c:''}" id="${id}"><svg class="i"><use href="#${ic}"/></svg><span>${l}</span>${s!=null?`<small>${s}</small>`:''}</button>`;
  sh('<b>Ajustes</b><button class="btn p ep2" id="a3"><svg class="i"><use href="#iepg"/></svg>Atualizar guia de programação (EPG)</button><div class="tg">'
@@ -259,20 +259,20 @@ $('#cfg').onclick=()=>{const e=expAt(),d=e?daysTo(e):0,
  arm('#a9',wipeAll);
  $('#a12').onclick=aboutSheet;
  ver().then(v=>{const x=$('#a13 small');if(x)x.textContent=v?v.name:'—'});
- $('#a13').onclick=async()=>{const v=await ver();toast(v?'ASC play '+v.name+' (código '+v.code+')':'Versão indisponível.',1)};
+ $('#a13').onclick=async()=>{const v=await ver();toast(v?'ASC DESK '+v.name+' (código '+v.code+')':'Versão indisponível.',1)};
  $('#a14').onclick=accSheet;
  $('#a5').onclick=pickCC;
  $('#a10').onclick=()=>{LS.asc_sc=LS.asc_sc=='1'?'0':'1';lastSc='';syncScr();$('#sheet').hidden=true;toast(LS.asc_sc=='1'?'Capturas bloqueadas nas telas de login e listas.':'Capturas liberadas.',1)}};
 
-function accSheet(){sh('<b>Cor de destaque</b><div class="sw">'+Object.keys(ACN).map(k=>`<button class="swb${ACC()==k?' on':''}" data-ac="${k}" title="${ACN[k]}" aria-label="${ACN[k]}"></button>`).join('')+'</div><small style="color:#a39a9d">A cor muda na hora em todo o app.</small>');
+function accSheet(){sh('<b>Cor de destaque</b><div class="sw">'+Object.keys(ACN).map(k=>`<button class="swb${ACC()==k?' on':''}" data-ac="${k}" title="${ACN[k]}" aria-label="${ACN[k]}"></button>`).join('')+'</div><small style="color:var(--m)">A cor muda na hora em todo o app.</small>');
  $('#sh').onclick=e=>{const b=e.target.closest('[data-ac]');if(!b)return;LS.asc_ac=b.dataset.ac;accApply();$('#sheet').hidden=true;toast('Cor: '+ACN[ACC()],1)}}
 /* ---------- Gerenciar listas ---------- */
 let SS=0;const KN={x:'Servidor e login',m:'Link M3U',f:'Arquivo / texto'};
 function lists(){SS=1;
- sh('<b>Gerenciar listas</b>'+(LST.l.length?'':'<small style="color:#a39a9d">Nenhuma lista cadastrada.</small>')+LST.l.map(x=>`<button class="btn${x.id==LST.act?' p':''}" data-l="${esc(x.id)}"><span>${esc(x.n)}</span><small style="margin-left:auto">${x.id==LST.act?'Em uso':esc(KN[x.m]||'')}</small></button>`).join('')+'<button class="btn" id="la">+ Adicionar lista</button>');
+ sh('<b>Gerenciar listas</b>'+(LST.l.length?'':'<small style="color:var(--m)">Nenhuma lista cadastrada.</small>')+LST.l.map(x=>`<button class="btn${x.id==LST.act?' p':''}" data-l="${esc(x.id)}"><span>${esc(x.n)}</span><small style="margin-left:auto">${x.id==LST.act?'Em uso':esc(KN[x.m]||'')}</small></button>`).join('')+'<button class="btn" id="la">+ Adicionar lista</button>');
  $('#sh').onclick=e=>{if(e.target.closest('#la')){$('#sheet').hidden=true;show('add');return}const b=e.target.closest('[data-l]');b&&listOpts(b.dataset.l)}}
 function listOpts(id){const x=LST.l.find(y=>y.id==id);if(!x)return;SS=1;
- sh(`<b>${esc(x.n)}</b><small style="color:#a39a9d">${esc(KN[x.m]||'')}</small>`+(x.id==LST.act?'':'<button class="btn p" id="o1">Usar esta lista</button>')+(x.u?'<button class="btn" id="o2">Atualizar lista</button>':'')+`<input id="rn" value="${esc(x.n)}" maxlength="40" aria-label="Nome da lista"><button class="btn" id="o4">Salvar nome</button><button class="btn" id="o3">Excluir</button><button class="btn" id="o5">Voltar</button>`);
+ sh(`<b>${esc(x.n)}</b><small style="color:var(--m)">${esc(KN[x.m]||'')}</small>`+(x.id==LST.act?'':'<button class="btn p" id="o1">Usar esta lista</button>')+(x.u?'<button class="btn" id="o2">Atualizar lista</button>':'')+`<input id="rn" value="${esc(x.n)}" maxlength="40" aria-label="Nome da lista"><button class="btn" id="o4">Salvar nome</button><button class="btn" id="o3">Excluir</button><button class="btn" id="o5">Voltar</button>`);
  $('#sh').onclick=async e=>{const b=e.target.closest('button');if(!b)return;
   if(b.id=='o1'){$('#sheet').hidden=true;useSaved(id)}
   else if(b.id=='o2'){$('#sheet').hidden=true;toast('Atualizando…');try{const c=x.m=='x'&&xcred(x.u);let t;if(c){const z=await xLogin(c.o,c.u,c.p);t=z.text;x.u=z.url}else{const r=await tf(x.u,3e5);if(!r.ok)throw 0;t=await r.text()}if(await useList(t,{id}))toast('Lista atualizada.')}catch{toast('Não consegui atualizar a lista.')}}
@@ -456,7 +456,7 @@ let VER=null;
 async function ver(){if(VER)return VER;if(!AD)return null;try{VER=await AD.version()}catch{}return VER}
 /* Atualização: o app consulta as Releases do GitHub. Você escolhe baixar; no fim ele reinicia e instala. */
 let updBusy=false;
-const updSheet=(j,v)=>{sh(`<b>Nova versão ${esc(j.version||'')}</b>${j.notes?`<p class="sy" style="max-height:8em">${esc(j.notes)}</p>`:''}<small id="up" style="color:#a39a9d">Você está na versão ${esc(v?v.name:'')}. Seus dados e listas são mantidos.</small><div class="bar" id="upb" hidden><i style="width:0"></i></div><button class="btn p" id="u1">Atualizar agora</button><button class="btn" id="u2">Depois</button>`);
+const updSheet=(j,v)=>{sh(`<b>Nova versão ${esc(j.version||'')}</b>${j.notes?`<p class="sy" style="max-height:8em">${esc(j.notes)}</p>`:''}<small id="up" style="color:var(--m)">Você está na versão ${esc(v?v.name:'')}. Seus dados e listas são mantidos.</small><div class="bar" id="upb" hidden><i style="width:0"></i></div><button class="btn p" id="u1">Atualizar agora</button><button class="btn" id="u2">Depois</button>`);
  $('#u2').onclick=()=>$('#sheet').hidden=true;
  $('#u1').onclick=async()=>{const up=$('#up'),b=$('#u1');b.disabled=true;$('#upb').hidden=false;up.textContent='Baixando…';
   try{await AD.downloadUpdate()}catch{up.textContent='Falha ao baixar a atualização. Tente de novo mais tarde.';b.disabled=false}}};
@@ -484,9 +484,9 @@ function bn(){const b=$('#exp'),e=expAt();if(!e){b.hidden=true;return}const d=da
  $('#et').textContent=d<0?`Sua lista venceu em ${dmy(e)}.`:d==0?'Sua lista vence hoje!':`Sua lista vence em ${d} dia${d>1?'s':''} (${dmy(e)}).`}
 $('#ex').onclick=()=>$('#exp').hidden=true;
 function expSheet(){const e=expAt(),x=!!xapi(),d=e?daysTo(e):0;
- sh(`<b>Vencimento</b><small style="color:#a39a9d">${e?`Sua lista vence em ${dmy(e)} (${d<0?'vencida':d+' dia'+(d==1?'':'s')}).`:x?'O servidor não informou data de vencimento.':'Informe a data para receber os avisos.'}</small>`
-  +(x?'':`<small style="color:#a39a9d">Data de vencimento</small><input type="date" id="ed" value="${e?isoD(e):''}"><button class="btn p" id="es">Salvar</button>`)
-  +'<small style="color:#a39a9d">Você recebe uma notificação 7, 3 e 1 dia antes e no dia do vencimento.</small>');
+ sh(`<b>Vencimento</b><small style="color:var(--m)">${e?`Sua lista vence em ${dmy(e)} (${d<0?'vencida':d+' dia'+(d==1?'':'s')}).`:x?'O servidor não informou data de vencimento.':'Informe a data para receber os avisos.'}</small>`
+  +(x?'':`<small style="color:var(--m)">Data de vencimento</small><input type="date" id="ed" value="${e?isoD(e):''}"><button class="btn p" id="es">Salvar</button>`)
+  +'<small style="color:var(--m)">Você recebe uma notificação 7, 3 e 1 dia antes e no dia do vencimento.</small>');
  const es=$('#es');if(es)es.onclick=async()=>{const l=CL(),v=$('#ed').value;
   if(v){l.exp=new Date(v+'T23:59:00').getTime();l.expm='1'}else{delete l.exp;delete l.expm}
   await saveL();$('#sheet').hidden=true;expSync();toast('Salvo.')}}
@@ -496,7 +496,7 @@ async function sched(){const N=plug('LocalNotifications');if(!N||!nat())return;c
   let p=await N.checkPermissions();if(p.display=='prompt'||p.display=='prompt-with-rationale')p=await N.requestPermissions();if(p.display!='granted')return;
   const L2=[[7,9001,'vence em 7 dias'],[3,9002,'vence em 3 dias'],[1,9003,'vence amanhã'],[0,9004,'vence hoje']],out=[],nm=CL().n||'';
   for(const[d,id,t]of L2){const a=new Date(e);a.setDate(a.getDate()-d);a.setHours(9,0,0,0);if(a.getTime()>e)a.setTime(e-36e5);
-   if(a.getTime()>Date.now())out.push({id,title:'ASC play',body:`Sua lista${nm?' "'+nm+'"':''} ${t} (${dmy(e)}).`,schedule:{at:a,allowWhileIdle:true}})}
+   if(a.getTime()>Date.now())out.push({id,title:'ASC DESK',body:`Sua lista${nm?' "'+nm+'"':''} ${t} (${dmy(e)}).`,schedule:{at:a,allowWhileIdle:true}})}
   if(out.length)await N.schedule({notifications:out})}catch{}}
 
 /* ---------- Segurança: PIN, tela protegida, ambiente ---------- */
@@ -526,7 +526,7 @@ async function chkPin(O=PIN,key='pin',title='Digite o PIN atual',len=0){try{let 
 async function setPin(){try{const a=await askPin('Crie um PIN (4 a 6 dígitos)',{cancel:1});if(!a)return;const b=await askPin('Repita o PIN',{cancel:1});if(!b)return;
  if(a!=b)return toast('Os PINs não conferem.');const s=crypto.getRandomValues(new Uint8Array(16));
  Object.assign(PIN,{on:true,s:b64e(s),h:await pbk(a,s),f:0,u:0});await vs('pin',PIN);lastSc='';syncScr();toast('PIN ativado.')}finally{pinEnd()}}
-function pinSheet(){sh(`<b>Bloqueio por PIN</b><small style="color:#a39a9d">${PIN.on?'Ativo: o app pede o PIN ao abrir e ao voltar depois de 30 segundos fora. Também esconde o app na lista de recentes. O PIN bloqueia o acesso ao app; a criptografia dos dados é feita pelo cofre do aparelho.':'Desativado. Bloqueie o acesso ao app com um PIN de 4 a 6 dígitos.'}</small>`+(PIN.on?'<button class="btn" id="p2">Trocar PIN</button><button class="btn" id="p3">Desativar PIN</button>':'<button class="btn p" id="p1">Ativar PIN</button>'));
+function pinSheet(){sh(`<b>Bloqueio por PIN</b><small style="color:var(--m)">${PIN.on?'Ativo: o app pede o PIN ao abrir e ao voltar depois de 30 segundos fora. Também esconde o app na lista de recentes. O PIN bloqueia o acesso ao app; a criptografia dos dados é feita pelo cofre do aparelho.':'Desativado. Bloqueie o acesso ao app com um PIN de 4 a 6 dígitos.'}</small>`+(PIN.on?'<button class="btn" id="p2">Trocar PIN</button><button class="btn" id="p3">Desativar PIN</button>':'<button class="btn p" id="p1">Ativar PIN</button>'));
  const go=(id,f)=>{const b=$(id);b&&(b.onclick=()=>{$('#sheet').hidden=true;f()})};
  go('#p1',setPin);go('#p2',async()=>{if(await chkPin())setPin()});
  go('#p3',async()=>{if(await chkPin()){Object.assign(PIN,{on:false,h:'',s:'',f:0,u:0});await vs('pin',PIN);lastSc='';syncScr();toast('PIN desativado.')}})}
@@ -538,8 +538,8 @@ async function setPar(){try{const a=await askPin('Crie a senha do controle paren
  if(a!=b)return toast('As senhas não conferem.');const s=crypto.getRandomValues(new Uint8Array(16));
  Object.assign(PAR,{on:true,s:b64e(s),h:await pbk(a,s),f:0,u:0});await vs('par',PAR);parRefresh();toast('Controle parental ativado.',1)}finally{pinEnd()}}
 function parSheet(){const n=new Set(S.items.filter(i=>adCat(i.g)).map(i=>i.g)).size;
- sh(`<b>Controle parental</b><small style="color:#a39a9d">${PAR.on?'Ativo: categorias adultas pedem a senha de 4 números. Conteúdo adulto não aparece na busca, no início nem nos favoritos.':'Desativado. Ative para bloquear as categorias adultas com uma senha de 4 números.'}</small>`
-  +(S.items.length?`<small style="color:#a39a9d">${n?n+' categoria'+(n>1?'s adultas detectadas':' adulta detectada')+' nesta lista.':'Nenhuma categoria adulta detectada nesta lista.'}</small>`:'')
+ sh(`<b>Controle parental</b><small style="color:var(--m)">${PAR.on?'Ativo: categorias adultas pedem a senha de 4 números. Conteúdo adulto não aparece na busca, no início nem nos favoritos.':'Desativado. Ative para bloquear as categorias adultas com uma senha de 4 números.'}</small>`
+  +(S.items.length?`<small style="color:var(--m)">${n?n+' categoria'+(n>1?'s adultas detectadas':' adulta detectada')+' nesta lista.':'Nenhuma categoria adulta detectada nesta lista.'}</small>`:'')
   +(PAR.on?'<button class="btn" id="c2">Trocar senha</button><button class="btn" id="c3">Desativar controle parental</button>':'<button class="btn p" id="c1">Ativar controle parental</button>'));
  const go=(id,f)=>{const b=$(id);b&&(b.onclick=()=>{$('#sheet').hidden=true;f()})};
  go('#c1',setPar);go('#c2',async()=>{if(await parAsk())setPar()});
@@ -561,7 +561,7 @@ $('#ac').onclick=()=>S.items.length?show('app'):lists();
 $('#go').onclick=async()=>{const u=$('#u').value.trim(),e=$('#e').value.trim(),st=$('#st');
  if(!okU(u))return st.textContent='Cole um link válido (http:// ou https://).';if(e&&!okU(e))return st.textContent='Link do EPG inválido.';st.textContent='Carregando…';
  try{const r=await tf(u,3e5);if(!r.ok)throw 0;if(await useList(await r.text(),{id:uid(),n:lname(new URL(u).host),m:'m',u,epg:e}))doneAdd()}
- catch{st.textContent='Não consegui baixar o link (bloqueio CORS do servidor). Use “Abrir arquivo” ou “Colar texto”, ou rode o app empacotado em APK.'}};
+ catch{st.textContent='Não consegui baixar o link (o servidor recusou ou o link está errado). Confira o link ou use “Abrir arquivo” ou “Colar texto”.'}};
 $('#f').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(f.size>LMAX)return $('#st').textContent='Arquivo grande demais (máximo de cerca de 250 MB).';
  const ep=$('#e').value.trim();if(await useList(await f.text(),{id:uid(),n:lname((f.name||'Arquivo').slice(0,40)),m:'f',u:'',epg:okU(ep)?ep:''}))doneAdd()};
 $('#fl').onkeydown=e=>e.key=='Enter'&&$('#f').click();
