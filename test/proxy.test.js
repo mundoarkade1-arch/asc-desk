@@ -76,3 +76,22 @@ test('fluxo longo (live) e cancelamento nao travam', async () => {
   assert.ok(closed, 'conexao de origem deve fechar ao cancelar');
   s.close();
 });
+
+test('filme: le adiantado (buffer grande) e entrega o arquivo inteiro sem corromper', async () => {
+  const total = 40 * 1024 * 1024;
+  const s = await server((req, res) => {
+    res.writeHead(206, { 'Content-Type': 'video/mp4', 'Content-Length': total, 'Content-Range': `bytes 0-${total - 1}/${total}` });
+    let sent = 0; const chunk = Buffer.alloc(64 * 1024, 7);
+    (function w() { while (sent < total) { sent += chunk.length; if (!res.write(chunk)) return res.once('drain', w); } res.end(); })();
+  });
+  const r = await open(base(s) + '/m.mp4', {}, { allowPrivate: true });
+  const resp = toResponse(r, Readable);
+  assert.strictEqual(resp.headers.get('accept-ranges'), 'bytes');
+  /* ninguem esta lendo: o proxy deve encher o buffer sozinho (espera ate 8 s, para nao falhar em maquina lenta) */
+  for (let i = 0; i < 80 && r.body.socket.bytesRead < 10 * 1024 * 1024; i++) await new Promise((x) => setTimeout(x, 100));
+  const ahead = r.body.socket.bytesRead;
+  assert.ok(ahead >= 10 * 1024 * 1024, `leu so ${(ahead / 1048576).toFixed(1)} MB na frente`);
+  let n = 0; for await (const c of Readable.fromWeb(resp.body)) n += c.length;
+  assert.strictEqual(n, total);
+  s.close();
+});
