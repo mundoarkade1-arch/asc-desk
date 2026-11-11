@@ -200,6 +200,9 @@ H.addEventListener('keydown',e=>{if(e.key=='Enter'&&e.target.classList.contains(
 
 document.querySelectorAll('nav [data-t]').forEach(b=>b.onclick=()=>{S.tab=b.dataset.t;S.cat='Todos';nav();render()});
 let qt;$('#q').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{S.q=e.target.value;render()},250)};
+/* Clicou em qualquer coisa fora dos resultados da busca: apaga o texto da busca (evita aparecer "nada encontrado" por causa de uma busca esquecida) */
+document.addEventListener('click',e=>{if(!S.q&&!$('#q').value)return;if(e.target.closest('#grid,#q,#sheet,#player,#lock,#tip,#toast,#blk'))return;
+ clearTimeout(qt);S.q='';$('#q').value='';if(!e.target.closest('nav [data-t],[data-go]'))render()},true);
 const openIt=(it,l)=>it&&(it.eps?eps(it):it.t=='tv'?play(it,l.filter(x=>x.t=='tv')):info(it));
 G.onclick=e=>{const c=e.target.closest('.card');if(c)openIt(S.view[c.dataset.i],S.view)};
 G.addEventListener('keydown',e=>{if(e.key=='Enter'&&e.target.classList.contains('card'))e.target.click()});
