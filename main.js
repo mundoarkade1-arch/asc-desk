@@ -62,7 +62,7 @@ async function handleProtocol(request) {
     const hd = {};
     request.headers.forEach((v, k) => { hd[k] = v; });
     try {
-      return toResponse(await open(target, hd), Readable);
+      return toResponse(await open(target, hd, { signal: request.signal }), Readable);
     } catch {
       return new Response(null, { status: 502 });
     }
