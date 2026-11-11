@@ -159,7 +159,7 @@ function home(){const ct=S.items.filter(i=>i.t!='tv'&&vis(i)&&isPart(i.u)).slice
   :'';
  h+=[['tv','Ao vivo',lv,t.length],['movie','Filmes',S.rails.movie,mv.length],['series','Séries',S.rails.series,sg.length]]
   .map(([k,n,l,tot])=>l.length?`<section class="sec"><div class="sx"><h2>${n}</h2><button class="chip" data-go="${k}">Ver mais ›</button></div>${rail(k,l,tot>l.length?k:'')}</section>`:'').join('');
- $('#home').innerHTML=h;fillNow()}
+ $('#home').innerHTML=h;fillNow();rcArm()}
 /* ---------- Carrossel de indicações: 5 sugestões do dia, tiradas da sua lista ---------- */
 const RCT={movie:'Filme',series:'Série',tv:'Ao vivo'};
 function pickReco(){let sd=(Math.floor(Date.now()/864e5)*2654435761)%4294967296||1;const rnd=()=>(sd=(sd*1664525+1013904223)%4294967296)/4294967296;
@@ -175,20 +175,27 @@ function reco(){const L=S.reco=pickReco();S.rc={i:0};if(!L.length)return'';
   const im=it.l?`<img class="rbg" alt="" src="${esc(PX(it.l))}"><img class="rpo${tv?' lg':''}" alt="" src="${esc(PX(it.l))}">`:`<span class="rpi">${esc(it.n[0]||'?')}</span>`;
   return`<div class="rs${k?'':' on'}">${im}<div class="rtx"><small>Indicação ${k+1} de ${L.length}</small><h1>${esc(it.n)}</h1><p>${esc(sub)}</p><div class="row"><button class="btn p" data-rp="${k}"><svg class="i"><use href="#${tv?'play':'ilist'}"/></svg>${tv?'Assistir ao vivo':'Ver detalhes'}</button></div></div></div>`}).join('');
  return`<section class="rc" id="rc" aria-label="Indicações para você">${sl}<button class="rn l" data-ra="-1" aria-label="Anterior">‹</button><button class="rn r" data-ra="1" aria-label="Próxima">›</button><div class="rdt">${L.map((_,k)=>`<button class="rd${k?'':' on'}" data-rd="${k}" aria-label="Indicação ${k+1}"><i></i></button>`).join('')}</div></section>`}
+let rcT;
+function rcArm(){clearTimeout(rcT);if(!S.rc||S.rc.hold)return;
+ rcT=setTimeout(function t(){if(!S.rc||S.rc.hold||!$('#rc')||$('#home').hidden)return;if(document.hidden||!P.hidden||!$('#sheet').hidden){rcT=setTimeout(t,1000);return}rcGo(S.rc.i+1)},5000)}
+function rcHold(on){if(!S.rc)return;S.rc.hold=!!on;const r=$('#rc');r&&r.classList.toggle('hold',!!on);on?clearTimeout(rcT):rcArm()}
 function rcGo(n){const L=S.reco||[];if(!L.length||!S.rc)return;const i=((n%L.length)+L.length)%L.length;S.rc.i=i;
  document.querySelectorAll('#rc .rs').forEach((e,k)=>e.classList.toggle('on',k==i));
- document.querySelectorAll('#rc .rd').forEach((d,k)=>{d.classList.remove('on');if(k==i){void d.offsetWidth;d.classList.add('on')}})}
+ document.querySelectorAll('#rc .rd').forEach((d,k)=>{d.classList.remove('on');if(k==i){void d.offsetWidth;d.classList.add('on')}});rcArm()}
 function pickCC(){const g=[...new Set(S.by.tv.map(i=>i.g))];
  sh('<b>Categoria do Canal do cliente</b><button class="btn" data-g="auto">Automático</button>'+g.map(x=>`<button class="btn" data-g="${esc(x)}">${esc(x)}</button>`).join(''));
  $('#sh').onclick=e=>{const b=e.target.closest('[data-g]');if(b){LS.asc_cc=b.dataset.g;$('#sheet').hidden=true;refresh()}}}
 const refresh=()=>{if(S.tab=='home'&&!S.q.trim())home();else if(S.tab=='fav')render()};
 const H=$('#home');
-H.onclick=e=>{const rd=e.target.closest('[data-rd]');if(rd)return rcGo(+rd.dataset.rd);const ra=e.target.closest('[data-ra]');if(ra)return rcGo(S.rc.i+ +ra.dataset.ra);const rp=e.target.closest('[data-rp]');if(rp){const it=(S.reco||[])[rp.dataset.rp];return it&&openIt(it,[it])}
+H.onclick=e=>{if(S.rc&&S.rc.hold&&!e.target.closest('#rc'))rcHold(false);
+ const rd=e.target.closest('[data-rd]');if(rd){if(+rd.dataset.rd==S.rc.i)return rcHold(true);rcHold(false);return rcGo(+rd.dataset.rd)}
+ const ra=e.target.closest('[data-ra]');if(ra){rcHold(false);return rcGo(S.rc.i+ +ra.dataset.ra)}
+ const rp=e.target.closest('[data-rp]');if(rp){const it=(S.reco||[])[rp.dataset.rp];rcHold(true);return it&&openIt(it,[it])}
+ if(e.target.closest('#rc .rs'))return rcHold(true);
  const g=e.target.closest('[data-go]');if(g){S.tab=g.dataset.go;S.cat=g.dataset.cat||'Todos';nav();render();return}
  if(e.target.closest('#pickcc'))return pickCC();
  const rb=e.target.closest('.rb');if(rb){const r=rb.parentElement.querySelector('.rail');r.scrollBy({left:(rb.classList.contains('l')?-1:1)*r.clientWidth*.85,behavior:'smooth'});return}
  const c=e.target.closest('.card');if(c){const l=S.rails[c.dataset.r]||[];openIt(l[c.dataset.i],l)}};
-H.addEventListener('animationend',e=>{if(e.animationName=='rcf'&&S.rc)rcGo(S.rc.i+1)});
 H.addEventListener('keydown',e=>{if(e.key=='Enter'&&e.target.classList.contains('card'))e.target.click()});
 
 document.querySelectorAll('nav [data-t]').forEach(b=>b.onclick=()=>{S.tab=b.dataset.t;S.cat='Todos';nav();render()});
