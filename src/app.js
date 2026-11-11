@@ -51,7 +51,7 @@ async function wipeAll(){try{const N=plug('Secure');N&&nat()&&await tmo(N.reset(
  try{await new Promise(r=>{const q=indexedDB.deleteDatabase('asc');q.onsuccess=q.onerror=q.onblocked=()=>r()})}catch{}
  try{LS.clear();sessionStorage.clear()}catch{}
  location.reload()}
-const ACN={r:'Gelo',b:'Azul',v:'Roxo',g:'Verde',o:'Laranja'},ACC=()=>ACN[LS.asc_ac]?LS.asc_ac:'r';
+const ACN={r:'Chama',b:'Azul',v:'Roxo',g:'Verde',o:'Gelo'},ACC=()=>ACN[LS.asc_ac]?LS.asc_ac:'r';
 const accApply=()=>document.documentElement.dataset.ac=ACC();accApply();
 const toast=(m,q)=>{document.querySelectorAll('#toast').forEach(x=>x.remove());const t=document.createElement('div');t.id='toast';if(q)t.className='q';t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),q?2200:4000)};
 const show=id=>{window.__ascBooted=1;$('#boot').hidden=true;['add','app'].forEach(x=>$('#'+x).hidden=x!=id)};
