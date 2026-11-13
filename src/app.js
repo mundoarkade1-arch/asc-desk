@@ -7,6 +7,8 @@ const kv=async(m,k,v)=>{const d=await db();return new Promise((res,rej)=>{const 
 /* fetch com limite de tempo, sem cookies e sem referer */
 /* No app (APK) toda rede passa pelo proxy nativo (/__p): streaming direto, sem bloqueio de CORS e sem a ponte pesada do plugin */
 const PX=u=>{try{return nat()&&/^https?:\/\//i.test(u)?'/__p?u='+encodeURIComponent(u):u}catch{return u}};
+/* Capas e logos passam pelo serviço de imagens do app: chegam reduzidas e ficam em cache no disco */
+const PI=(u,w)=>{try{return nat()&&/^https?:\/\//i.test(u)?'/__i?u='+encodeURIComponent(u)+'&w='+w:u}catch{return u}};
 const tf=(u,ms=20000)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);return fetch(PX(u),{signal:c.signal,credentials:'omit',referrerPolicy:'no-referrer'}).finally(()=>clearTimeout(t))};
 const okU=u=>{try{return /^https?:$/.test(new URL(u).protocol)}catch{return false}};
 const sl=u=>/^https?:\/\//i.test(u)?u:'';
@@ -86,6 +88,15 @@ async function parse(t){const out=[],tvg=(t.slice(0,2000).match(/(?:url-tvg|x-tv
    cur={n:ln.slice(ci+1).trim()||a.tn||'',l:sl(a.l||''),g:a.g||'Outros',id:a.id||'',p:a.p||a.p2||a.p3||a.p4||''}}
   else if(cur&&/^(https?|rtmp|rtsp):/i.test(ln)){cur.u=ln;cur.t=kind(cur);cur.k=nz(cur.n);cur.ad=adItem(cur)?1:0;out.push(cur);cur=null}}
  return{out,tvg}}
+/* Lista já processada: guardada (criptografada) para o app abrir sem baixar/ler/processar tudo de novo.
+   Troque PV se mudar a forma de processar a lista (kind, adItem, nz...) para o cache antigo ser ignorado. */
+const PV=1;
+async function fastList(id){try{const b=await kv('get','pi:'+id);if(!b)return false;const t=await cDec(b);if(!t)return false;const j=JSON.parse(t);
+ if(!j||j.v!=PV||!Array.isArray(j.o)||!j.o.length)return false;CL().tvg=j.t||'';finish(j.o);return true}catch{return false}}
+function putParsed(id,out,tvg){if(out.length>3e5)return;setTimeout(function w(){if(!P.hidden){setTimeout(w,15000);return}
+ (async()=>{try{if(CL().id!=id)return;await kv('put','pi:'+id,await cEnc(JSON.stringify({v:PV,t:tvg||'',o:out})))}catch{}})()},5000)}
+function finish(out){S.items=out;S.by={tv:[],movie:[],series:[]};for(const i of out)S.by[i.t].push(i);S.hasE=0;S._sg=null;S.cat='Todos';S.tab='home';S.epg={};S.al={};XS=null;show('app');nav();render();
+ const e=epgUrl();if(e)setTimeout(()=>loadEPG(e),2000);setTimeout(acct,3000);expSync()}
 async function useList(text,meta,cached){
  if(text.length>LMAX){$('#st').textContent='Lista grande demais (máximo de cerca de 250 MB).';return false}
  $('#st').textContent='Processando a lista…';const{out,tvg}=await parse(text);if(!out.length){$('#st').textContent='Nenhum canal encontrado. Confira se é uma lista M3U válida.';return false}
@@ -93,8 +104,7 @@ async function useList(text,meta,cached){
  const l=CL();l.tvg=tvg||'';
  if(!cached)await kv('put','pl:'+l.id,await cEnc(text));
  await saveL();
- S.items=out;S.by={tv:[],movie:[],series:[]};for(const i of out)S.by[i.t].push(i);S.hasE=0;S._sg=null;S.cat='Todos';S.tab='home';S.epg={};S.al={};XS=null;show('app');nav();render();
- const e=epgUrl();if(e)setTimeout(()=>loadEPG(e),2000);setTimeout(acct,3000);expSync();return true}
+ finish(out);putParsed(l.id,out,tvg);return true}
 
 /* ---------- EPG (XMLTV) ---------- */
 const dec=s=>s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'");
@@ -103,16 +113,24 @@ const nk=s=>nz(s).replace(/\b(fhd|uhd|hd|sd|4k|h265|hevc)\b/g,'').replace(/[^a-z
 /* Guia: link informado > xmltv.php do servidor (login/senha) > url-tvg da lista */
 const xepg=()=>{try{const b=new URL(CL().u||''),u=b.searchParams.get('username'),p=b.searchParams.get('password');if(u&&p)return`${b.origin}/xmltv.php?username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}`}catch{}};
 const epgUrl=()=>CL().epg||xepg()||CL().tvg||'';
-async function loadEPG(url,manual){try{const r=await tf(url,6e4);if(!r.ok)throw 0;let t;
-  if(/\.gz(\?|$)/i.test(url)&&window.DecompressionStream)t=await new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).text();else t=await r.text();
-  const now=Date.now(),lim=now+12*36e5,E={},A={};
-  let nn=0,yT=performance.now();for(const m of t.matchAll(/<channel\s+id="([^"]+)"[^>]*>([\s\S]*?)<\/channel>/g)){if(++nn%100==0&&performance.now()-yT>10){await sleep(0);yT=performance.now()}const id=dec(m[1]).toLowerCase();A[id]=id;
-   for(const n of m[2].matchAll(/<display-name[^>]*>([^<]+)/g)){const d=dec(n[1]).trim();A[d.toLowerCase()]=id;A[nk(d)]=id}}
-  for(const m of t.matchAll(/<programme\s([^>]*)>([\s\S]*?)<\/programme>/g)){if(++nn%100==0&&performance.now()-yT>10){await sleep(0);yT=performance.now()}const a=m[1],
-   st=a.match(/start="(\d{14})\s?([+-]\d{4})?"/),sp=a.match(/stop="(\d{14})\s?([+-]\d{4})?"/),ch=a.match(/channel="([^"]*)"/),
-   ti=m[2].match(/<title[^>]*>\s*(?:<!\[CDATA\[([\s\S]*?)\]\]>|([^<]*))/);
-   if(!st||!sp||!ch||!ti)continue;const s=ms(st[1],st[2]),e=ms(sp[1],sp[2]);if(e<now||s>lim)continue;
-   (E[dec(ch[1]).toLowerCase()]||=[]).push({s,e,t:dec(ti[1]!=null?ti[1]:ti[2]||'').trim()})}
+async function loadEPG(url,manual){try{const r=await tf(url,6e4);if(!r.ok)throw 0;
+  /* Lê o guia aos pedaços (sem carregar o arquivo inteiro na memória) e guarda só os canais que existem na sua lista */
+  let body=r.body;if(/\.gz(\?|$)/i.test(url)&&window.DecompressionStream)body=body.pipeThrough(new DecompressionStream('gzip'));
+  const rd=body.pipeThrough(new TextDecoderStream()).getReader();
+  const now=Date.now(),lim=now+12*36e5,E={},A={};let buf='',W=null,yT=performance.now();
+  const want=()=>W||(W=(()=>{const w=new Set();for(const i of S.by.tv){const id=(i.id||'').toLowerCase();if(id)w.add(id);const a=A[i.n.toLowerCase()]||A[nk(i.n)];if(a)w.add(a)}return w})());
+  const RX=/<channel\s+id="([^"]+)"[^>]*>([\s\S]*?)<\/channel>|<programme\s([^>]*)>([\s\S]*?)<\/programme>/g;
+  for(;;){const{done,value}=await rd.read();if(value)buf+=value;
+   RX.lastIndex=0;let m,end=0,nn=0;
+   while((m=RX.exec(buf))){end=RX.lastIndex;
+    if(m[1]!=null){const id=dec(m[1]).toLowerCase();A[id]=id;
+     for(const n of m[2].matchAll(/<display-name[^>]*>([^<]+)/g)){const d=dec(n[1]).trim();A[d.toLowerCase()]=id;A[nk(d)]=id}}
+    else{const a=m[3],ch=a.match(/channel="([^"]*)"/);if(ch){const cid=dec(ch[1]).toLowerCase();
+     if(want().has(cid)){const st=a.match(/start="(\d{14})\s?([+-]\d{4})?"/),sp=a.match(/stop="(\d{14})\s?([+-]\d{4})?"/),
+      ti=m[4].match(/<title[^>]*>\s*(?:<!\[CDATA\[([\s\S]*?)\]\]>|([^<]*))/);
+      if(st&&sp&&ti){const s=ms(st[1],st[2]),e=ms(sp[1],sp[2]);if(e>=now&&s<=lim)(E[cid]||=[]).push({s,e,t:dec(ti[1]!=null?ti[1]:ti[2]||'').trim()})}}}}
+    if(++nn%100==0&&performance.now()-yT>10){await sleep(0);yT=performance.now()}}
+   buf=buf.slice(end);if(done)break;await sleep(0)}
   for(const k in E)E[k].sort((a,b)=>a.s-b.s);
   S.epg=E;S.al=A;S.hasE=Object.keys(E).length?1:0;fillNow();if(!P.hidden&&cur&&live())epgBar();
   if(manual)toast(Object.keys(E).length?'Guia atualizado':'O guia veio vazio ou fora do horário.',1)}
@@ -124,22 +142,23 @@ function fillNow(from){if(!S.hasE)return;const one=c=>{if(!c.classList.contains(
  if(from==null)document.querySelectorAll('.card.tv').forEach(one);else for(let k=from;k<G.children.length;k++)one(G.children[k])}
 
 /* ---------- Lista ---------- */
-function grp(a){const m=new Map();for(const i of a){const k=title(i.n);if(!m.has(k))m.set(k,{n:k,l:i.l,g:i.g,t:'series',eps:[],ad:0});const z=m.get(k);z.eps.push(i);if(i.ad)z.ad=1}return[...m.values()]}
+function grp(a){const m=new Map();for(const i of a){const k=i.tt||(i.tt=title(i.n));if(!m.has(k))m.set(k,{n:k,l:i.l,g:i.g,t:'series',eps:[],ad:0});const z=m.get(k);z.eps.push(i);if(i.ad)z.ad=1}return[...m.values()]}
 /* Controle parental: com ele ativo, item adulto so aparece dentro da categoria liberada com a senha; na busca nunca aparece */
 const vis=i=>!(PAR.on&&i.ad&&!(S.adOk&&i.g==S.adOk)),hidA=i=>!(PAR.on&&i.ad);
-function view(){const q=nz(S.q.trim());
+const sq=()=>{const q=nz(S.q.trim());return q.length<2?'':q}; /* 1 letra só não busca: evita varrer a lista inteira a cada tecla */
+function view(){const q=sq();
  if(S.adOk&&(S.cat!=S.adOk||S.tab=='home'||S.tab=='fav'))S.adOk='';
  if(S.tab=='home'){if(!q)return[];const r=S.items.filter(i=>i.k.includes(q)&&hidA(i));return[...r.filter(i=>i.t!='series'),...grp(r.filter(i=>i.t=='series'))]}
  if(S.tab=='fav'){const FS=new Set(S.fav);let f=[...S.by.tv.filter(i=>FS.has(i.u)),...S.by.movie.filter(i=>FS.has(i.u)),...sgrp().filter(g=>S.fav.includes('S:'+g.n))].filter(vis);if(q)f=f.filter(i=>nz(i.n).includes(q));return f}
  let a=S.by[S.tab]||[];
  if(q)a=a.filter(i=>i.k.includes(q)&&hidA(i));else{if(S.cat!='Todos')a=a.filter(i=>i.g==S.cat);a=a.filter(vis)}
  if(S.tab=='series')a=(q||S.cat!='Todos')?grp(a):sgrp().filter(vis);return a}
-const card=(i,k,r)=>`<div class="card ${i.t=='tv'?'tv':''}" tabindex="0" data-i="${k}"${r?` data-r="${r}"`:''}><div class="im"><span class="pi">${esc(i.n[0]||'?')}</span>${i.l?`<img loading="lazy" decoding="async" alt="" src="${esc(PX(i.l))}">`:''}</div><b>${esc(i.n)}</b>${i.t=='tv'?'<small class="now"></small>':''}</div>`;
+const card=(i,k,r)=>`<div class="card ${i.t=='tv'?'tv':''}" tabindex="0" data-i="${k}"${r?` data-r="${r}"`:''}><div class="im"><span class="pi">${esc(i.n[0]||'?')}</span>${i.l?`<img loading="lazy" decoding="async" alt="" src="${esc(PI(i.l,i.t=='tv'?200:320))}">`:''}</div><b>${esc(i.n)}</b>${i.t=='tv'?'<small class="now"></small>':''}</div>`;
 const itemOf=c=>c.dataset.r?(S.rails[c.dataset.r]||[])[c.dataset.i]:S.view[c.dataset.i];
 function nav(){document.querySelectorAll('nav [data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t==S.tab));
  const dd=S.tab=='tv'||S.tab=='movie'||S.tab=='series';$('#catb').hidden=!dd;$('#cl').textContent=S.cat=='Todos'?'Todas as categorias':S.cat}
 function render(){S.view=view();S.pos=0;G.innerHTML='';$('#main').scrollTop=0;
- const ih=S.tab=='home'&&!S.q.trim();G.hidden=ih;$('#main').classList.toggle('hm',ih);$('#home').hidden=!ih;if(ih)return home();
+ const ih=S.tab=='home'&&!sq();G.hidden=ih;$('#main').classList.toggle('hm',ih);$('#home').hidden=!ih;if(ih)return home();
  if(!S.view.length)G.innerHTML='<div class="empty">Nada por aqui ainda.</div>';else more()}
 function more(){if(S.pos>=S.view.length)return;const e=Math.min(S.pos+(liteOn()?30:60),S.view.length);let h='';for(let k=S.pos;k<e;k++)h+=card(S.view[k],k);S.pos=e;const n0=G.children.length;G.insertAdjacentHTML('beforeend',h);fillNow(n0)}
 new IntersectionObserver(e=>e[0].isIntersecting&&more(),{rootMargin:'600px'}).observe($('#more'));
@@ -162,7 +181,7 @@ function home(){const ct=S.items.filter(i=>i.t!='tv'&&vis(i)&&isPart(i.u)).slice
   :'';
  h+=[['tv','Ao vivo',lv,t.length],['movie','Filmes',S.rails.movie,mv.length],['series','Séries',S.rails.series,sg.length]]
   .map(([k,n,l,tot])=>l.length?`<section class="sec"><div class="sx"><h2>${n}</h2><button class="chip" data-go="${k}">Ver mais ›</button></div>${rail(k,l,tot>l.length?k:'')}</section>`:'').join('');
- $('#home').innerHTML=h;fillNow();rcArm()}
+ $('#home').innerHTML=h;fillNow();rcArm();setTimeout(()=>rcLoad(1),1500)}
 /* ---------- Carrossel de indicações: 5 sugestões do dia, tiradas da sua lista ---------- */
 const RCT={movie:'Filme',series:'Série',tv:'Ao vivo'};
 function pickReco(){let sd=(Math.floor(Date.now()/864e5)*2654435761)%4294967296||1;const rnd=()=>(sd=(sd*1664525+1013904223)%4294967296)/4294967296;
@@ -173,16 +192,17 @@ function pickReco(){let sd=(Math.floor(Date.now()/864e5)*2654435761)%4294967296|
  for(const i of[...mv,...sg,...tv])add(i);
  for(const i of[...S.by.movie,...sgrp(),...S.by.tv])if(vis(i))add(i);
  return out}
-function reco(){const L=S.reco=pickReco();S.rc={i:0};if(!L.length)return'';
+function reco(){const L=S.reco=pickReco(),lt=liteOn();S.rc={i:0};if(!L.length)return'';
  const sl=L.map((it,k)=>{const t=it.eps?'series':it.t,tv=t=='tv',sub=[RCT[t],it.g,t=='series'&&it.eps?it.eps.length+(it.eps.length==1?' episódio':' episódios'):''].filter(Boolean).join(' • ');
-  const im=it.l?`<img class="rbg" alt="" src="${esc(PX(it.l))}"><img class="rpo${tv?' lg':''}" alt="" src="${esc(PX(it.l))}">`:`<span class="rpi">${esc(it.n[0]||'?')}</span>`;
+  const sa=k?'data-s':'src',u6=it.l?esc(PI(it.l,640)):'',im=it.l?(lt?'':`<img class="rbg" alt="" ${sa}="${u6}">`)+`<img class="rpo${tv?' lg':''}" alt="" ${sa}="${u6}">`:`<span class="rpi">${esc(it.n[0]||'?')}</span>`;
   return`<div class="rs${k?'':' on'}">${im}<div class="rtx"><small>Indicação ${k+1} de ${L.length}</small><h1>${esc(it.n)}</h1><p>${esc(sub)}</p><div class="row"><button class="btn p" data-rp="${k}"><svg class="i"><use href="#${tv?'play':'ilist'}"/></svg>${tv?'Assistir ao vivo':'Ver detalhes'}</button></div></div></div>`}).join('');
  return`<section class="rc" id="rc" aria-label="Indicações para você">${sl}<button class="rn l" data-ra="-1" aria-label="Anterior">‹</button><button class="rn r" data-ra="1" aria-label="Próxima">›</button><div class="rdt">${L.map((_,k)=>`<button class="rd${k?'':' on'}" data-rd="${k}" aria-label="Indicação ${k+1}"><i></i></button>`).join('')}</div></section>`}
 let rcT;
 function rcArm(){clearTimeout(rcT);if(!S.rc||S.rc.hold)return;
  rcT=setTimeout(function t(){if(!S.rc||S.rc.hold||!$('#rc')||$('#home').hidden)return;if(document.hidden||!P.hidden||!$('#sheet').hidden){rcT=setTimeout(t,1000);return}rcGo(S.rc.i+1)},5000)}
 function rcHold(on){if(!S.rc)return;S.rc.hold=!!on;const r=$('#rc');r&&r.classList.toggle('hold',!!on);on?clearTimeout(rcT):rcArm()}
-function rcGo(n){const L=S.reco||[];if(!L.length||!S.rc)return;const i=((n%L.length)+L.length)%L.length;S.rc.i=i;
+const rcLoad=n=>{const L=S.reco||[];if(!L.length)return;const e=document.querySelectorAll('#rc .rs')[((n%L.length)+L.length)%L.length];e&&e.querySelectorAll('img[data-s]').forEach(m=>{m.src=m.dataset.s;m.removeAttribute('data-s')})};
+function rcGo(n){const L=S.reco||[];if(!L.length||!S.rc)return;const i=((n%L.length)+L.length)%L.length;S.rc.i=i;rcLoad(i);rcLoad(i+1);
  document.querySelectorAll('#rc .rs').forEach((e,k)=>e.classList.toggle('on',k==i));
  document.querySelectorAll('#rc .rd').forEach((d,k)=>{d.classList.remove('on');if(k==i){void d.offsetWidth;d.classList.add('on')}});rcArm()}
 function pickCC(){const g=[...new Set(S.by.tv.map(i=>i.g))];
@@ -229,7 +249,7 @@ async function meta(it,isS){const A=xapi();if(!A)return;
  try{if(!isS){const id=(it.u.match(/\/movie\/[^/]+\/[^/]+\/(\d+)/)||[])[1];if(!id)return;const i=(await(await tf(A+'&action=get_vod_info&vod_id='+id)).json()).info||{};
    return{p:i.plot||i.description,m:[i.genre,(i.releasedate||'').slice(0,4),i.duration,i.rating&&'★ '+i.rating].filter(Boolean).join(' • ')}}
   const x=(await gs()).get(nz(it.n));return x&&{p:x.plot,m:[x.genre,(x.releaseDate||x.release_date||'').slice(0,4),x.rating&&'★ '+x.rating].filter(Boolean).join(' • ')}}catch{}}
-const hdr=it=>`<div class="dt">${it.l?`<img src="${esc(PX(it.l))}" alt="">`:''}<div><b>${esc(it.n)}</b><small style="display:block;color:var(--m)">${esc(it.g)}</small><small id="my" style="color:var(--m)"></small><p class="sy" id="sy">${esc(it.p||'Sem sinopse disponível.')}</p></div></div>`;
+const hdr=it=>`<div class="dt">${it.l?`<img src="${esc(PI(it.l,320))}" alt="">`:''}<div><b>${esc(it.n)}</b><small style="display:block;color:var(--m)">${esc(it.g)}</small><small id="my" style="color:var(--m)"></small><p class="sy" id="sy">${esc(it.p||'Sem sinopse disponível.')}</p></div></div>`;
 async function fillMeta(it,s){const x=await meta(it,s);if(x&&$('#sy')){if(x.p)$('#sy').textContent=x.p;if(x.m)$('#my').textContent=x.m}}
 /* progresso: asc_pos[u]={t,d,done}; asc_last[serie]=url do ultimo episodio visto */
 const favK=it=>it.t=='series'?'S:'+(it.eps?it.n:title(it.n)):it.u;
@@ -314,8 +334,8 @@ function listOpts(id){const x=LST.l.find(y=>y.id==id);if(!x)return;SS=1;
   else if(b.id=='o4'){x.n=$('#rn').value.trim().slice(0,40)||x.n;await saveL();lists()}
   else if(b.id=='o3'){if(b.dataset.c)delList(id);else{b.dataset.c=1;b.textContent='Toque de novo para excluir'}}
   else if(b.id=='o5')lists()}}
-async function useSaved(id){LST.act=id;await saveL();const t=await plGet(id);if(t)await useList(t,null,1);else{S.items=[];show('add');toast('Essa lista está sem dados. Adicione de novo.')}}
-async function delList(id){const was=LST.act==id;LST.l=LST.l.filter(y=>y.id!=id);kv('del','pl:'+id).catch(()=>{});if(was)LST.act=LST.l[0]?LST.l[0].id:'';await saveL();
+async function useSaved(id){LST.act=id;await saveL();if(await fastList(id))return;const t=await plGet(id);if(t)await useList(t,null,1);else{S.items=[];show('add');toast('Essa lista está sem dados. Adicione de novo.')}}
+async function delList(id){const was=LST.act==id;LST.l=LST.l.filter(y=>y.id!=id);kv('del','pl:'+id).catch(()=>{});kv('del','pi:'+id).catch(()=>{});if(was)LST.act=LST.l[0]?LST.l[0].id:'';await saveL();
  if(!was)return lists();$('#sheet').hidden=true;if(LST.act)useSaved(LST.act);else{S.items=[];S._sg=null;show('add')}}
 
 /* ---------- Orientação / tela cheia ---------- */
@@ -347,7 +367,9 @@ const HC=(lv,f)=>({xhrSetup:(x,u)=>{x.open('GET',PX(u),true)},enableWorker:true,
  abrEwmaDefaultEstimate:3e6,abrBandWidthFactor:.8,abrBandWidthUpFactor:.6});
 let PLC;const pld=()=>PLC||(PLC=(()=>{const B=Hls.DefaultConfig.loader;return class extends B{load(c,g,cb){const ok=cb.onSuccess;
   super.load(c,g,Object.assign({},cb,{onSuccess:(r,st,x,n)=>{try{if(r&&n&&n.getResponseHeader){r.url=n.getResponseHeader('X-Final-Url')||c.url}}catch{}return ok(r,st,x,n)}}))}}})());
-let mp=null,MLP;const TSU=/\.ts(\?|$)/i,mpOff=()=>{if(mp){try{mp.destroy()}catch{}mp=null}},
+let mp=null,MLP,mpW=false;/* mpW: leitor .ts em thread separada (mais leve para a tela). Se falhar antes de tocar 2 vezes seguidas, volta ao modo antigo sozinho */
+const wFail=()=>{if(mpW&&LS.asc_wok!='1'){const n=(+LS.asc_nwc||0)+1;LS.asc_nwc=String(n);if(n>=2)LS.asc_nw='1'}};
+const TSU=/\.ts(\?|$)/i,mpOff=()=>{if(mp){try{mp.destroy()}catch{}mp=null}mpW=false},
 ML=()=>window.mpegts?Promise.resolve():(MLP=MLP||new Promise(r=>{const s=document.createElement('script');s.src='vendor/mpegts.min.js';s.onload=s.onerror=()=>r();document.head.append(s)}));
 let viaNat=false,hlsLv=false,HLP,gen=0,wd=null,lastT=-1,lastBe=0,stuck=0,rc=0,started=false,UP=false;
 const HL=()=>window.Hls?Promise.resolve():(HLP=HLP||new Promise(r=>{const s=document.createElement('script');s.src='vendor/hls.min.js';s.onload=s.onerror=()=>r();document.head.append(s)}));
@@ -370,8 +392,8 @@ function src(u,at,fresh,forceNat){const g=++gen;if(live())u=CAND[ci]||u;UP=false
  if(hls){hls.destroy();hls=null}mpOff();
  /* Canal .ts (fluxo MPEG-TS puro): o Android não toca direto, então usamos o leitor mpegts.js */
  if(live()&&TSU.test(u)){viaNat=true;ML().then(()=>{if(g!=gen)return;
-   if(window.mpegts&&mpegts.isSupported()){const p=mp=mpegts.createPlayer({type:'mpegts',isLive:true,url:/^https?:\/\//i.test(u)&&nat()?location.origin+PX(u):u},{enableWorker:false,enableStashBuffer:true,stashInitialSize:128,liveBufferLatencyChasing:false,autoCleanupSourceBuffer:true,autoCleanupMaxBackwardDuration:30,autoCleanupMinBackwardDuration:12});
-    p.attachMediaElement(V);p.on(mpegts.Events.ERROR,(t,d,i)=>{if(p!=mp)return;const cd=i&&i.code;if(!started&&[401,403,404,410].includes(cd)&&nextCand())return;dbg('Canal .ts: '+d+(cd?' (HTTP '+cd+')':'')+(i&&i.msg?' '+String(i.msg).slice(0,70):''));setTimeout(()=>{if(p==mp&&!P.hidden&&cur)recover()},800)});
+   if(window.mpegts&&mpegts.isSupported()){const p=mp=mpegts.createPlayer({type:'mpegts',isLive:true,url:/^https?:\/\//i.test(u)&&nat()?location.origin+PX(u):u},{enableWorker:mpW=!LS.asc_nw,enableStashBuffer:true,stashInitialSize:128,liveBufferLatencyChasing:false,autoCleanupSourceBuffer:true,autoCleanupMaxBackwardDuration:30,autoCleanupMinBackwardDuration:12});
+    p.attachMediaElement(V);p.on(mpegts.Events.ERROR,(t,d,i)=>{if(p!=mp)return;const cd=i&&i.code;if(!started)wFail();if(!started&&[401,403,404,410].includes(cd)&&nextCand())return;dbg('Canal .ts: '+d+(cd?' (HTTP '+cd+')':'')+(i&&i.msg?' '+String(i.msg).slice(0,70):''));setTimeout(()=>{if(p==mp&&!P.hidden&&cur)recover()},800)});
     p.load();Promise.resolve(p.play()).catch(()=>{})}
    else dbg('Este canal só existe em .ts e o leitor não carregou.')});return}
  HL().then(()=>{if(g!=gen)return;
@@ -396,13 +418,13 @@ function tick(){if(P.hidden||!cur)return;if(UP&&V.paused)return;
  const t=V.currentTime,adv=Math.abs(t-lastT)>.25;lastT=t;
  if(!live()&&V.buffered.length){const be=V.buffered.end(V.buffered.length-1);if(be>lastBe+.25)stuck=0;lastBe=be}
  if(V.seeking||dr){stuck=0;return}
- if(adv&&V.readyState>=2){started=true;if(live()&&CAND.length>1){const e=/\.ts(\?|$)/i.test(CAND[ci]||'')?'ts':'m3u8',k=fmK(cur.u),o=jg('asc_fm',{});if(o[k]!=e){o[k]=e;try{LS.asc_fm=JSON.stringify(o)}catch{}}}stuck=0;rc=0;spin(false);return}
+ if(adv&&V.readyState>=2){started=true;if(mpW&&mp&&LS.asc_wok!='1')LS.asc_wok='1';if(live()&&CAND.length>1){const e=/\.ts(\?|$)/i.test(CAND[ci]||'')?'ts':'m3u8',k=fmK(cur.u),o=jg('asc_fm',{});if(o[k]!=e){o[k]=e;try{LS.asc_fm=JSON.stringify(o)}catch{}}}stuck=0;rc=0;spin(false);return}
  stuck++;if(stuck>=2)spin(true);
  for(let i=0;i<V.buffered.length;i++){const s=V.buffered.start(i);if(s>t&&s-t<3){try{V.currentTime=s+.05}catch{}break}}
  if(live()&&!started&&stuck==15)toast('Este canal está demorando para abrir…');
  if(stuck>=(started?(live()?10:25):(live()?14:30)))recover()}
 function recover(){if(P.hidden||!cur)return;stuck=0;const n=++rc;
- if(live()&&!started){spin(true);if(viaNat&&CAND.length>1)ci=(ci+1)%CAND.length;src(cur.u,0,1,!viaNat);return}
+ if(live()&&!started){wFail();spin(true);if(viaNat&&CAND.length>1)ci=(ci+1)%CAND.length;src(cur.u,0,1,!viaNat);return}
  if(!live()&&n>6){wdOff();gen++;if(hls){hls.destroy();hls=null}spin(false);toast('Não foi possível reproduzir. O servidor pode estar fora do ar ou o formato não é compatível.');return}
  spin(true);
  if(hls&&n%3){if(n%3==1)hls.startLoad(-1);else hls.recoverMediaError();V.play().catch(()=>{});return}
@@ -596,7 +618,7 @@ async function envOk(){const N=SCN();if(!N)return '';try{const r=await tmo(N.che
 
 /* ---------- Início ---------- */
 function setDev(d){S.dev=d;document.body.className='pc'}
-async function boot(){const l=CL(),t=l.id&&await plGet(l.id);if(t)return useList(t,null,1);$('#ac').hidden=!LST.l.length;show('add')}
+async function boot(){const l=CL();if(l.id&&await fastList(l.id))return true;const t=l.id&&await plGet(l.id);if(t)return useList(t,null,1);$('#ac').hidden=!LST.l.length;show('add')}
 const lname=d=>($('#ln').value.trim()||d).slice(0,40);
 const doneAdd=()=>{['xs','xu','xp','u','e','ta','ln'].forEach(i=>$('#'+i).value='');$('#st').textContent=''};
 $('#ac').onclick=()=>S.items.length?show('app'):lists();
@@ -645,5 +667,5 @@ $('#pa').onclick=()=>{const t=$('#ta');if(t.hidden){t.hidden=false;t.focus();$('
  setDev('pc');await boot()
  setTimeout(()=>{try{HL()}catch{}},1500);setTimeout(()=>checkUpd(),5000)
 }catch(e){bootErr((e&&e.message)||e)}})();
-addEventListener('error',e=>{const t=e.target;if(t&&t.tagName=='IMG')t.remove()},true);
+addEventListener('error',e=>{const t=e.target;if(t&&t.tagName=='IMG'){const m=/\/__i\?u=([^&]+)/.exec(t.getAttribute('src')||'');if(m&&!t.dataset.fb){t.dataset.fb='1';t.src='/__p?u='+m[1];return}t.remove()}},true);
 try{const A=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.App;A&&A.addListener('backButton',()=>{if(!LK.hidden){if(pinCan)pinCancel();else A.exitApp()}else if(!P.hidden)close();else if(!$('#sheet').hidden)$('#sheet').hidden=true;else A.exitApp()})}catch{}

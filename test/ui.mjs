@@ -11,6 +11,7 @@ const SRC = path.resolve('src'); const OUT = process.env.SHOTS || '/tmp/ascdesk-
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg' };
 
 const hits = [];
+const xmlNow = (d) => new Date(d).toISOString().replace(/[-:T]/g, '').slice(0, 14) + ' +0000';
 const iptv = http.createServer((req, res) => {
   const u = new URL(req.url, 'http://x'); hits.push(u.pathname);
   if (u.pathname === '/get.php') {
@@ -23,13 +24,24 @@ const iptv = http.createServer((req, res) => {
   }
   if (u.pathname.endsWith('.m3u8')) { res.writeHead(404); return res.end('nf'); }
   if (u.pathname.endsWith('.ts')) { res.writeHead(503); return res.end('busy'); }
+  if (u.pathname === '/xmltv.php') {
+    const a = xmlNow(Date.now() - 30 * 60e3), b = xmlNow(Date.now() + 30 * 60e3);
+    let x = '<?xml version="1.0"?><tv>';
+    for (const id of ['c1', 'c2', 'c3', 'zzz']) x += `<channel id="${id}"><display-name>Canal ${id}</display-name></channel>`;
+    for (const id of ['c1', 'c2', 'c3', 'zzz']) x += `<programme start="${a}" stop="${b}" channel="${id}"><title>Jornal ${id}</title></programme>`;
+    x += '</tv>';
+    res.writeHead(200, { 'Content-Type': 'application/xml' });
+    const cuts = [37, 210, 333, 560]; let from = 0; /* corta no meio das tags de propósito */
+    for (const c of cuts) { res.write(x.slice(from, c)); from = c; }
+    return res.end(x.slice(from));
+  }
   if (u.pathname === '/logo.png') { res.writeHead(200, { 'Content-Type': 'image/png' }); return res.end(fs.readFileSync(path.join(SRC, 'icon.png'))); }
   res.writeHead(404); res.end();
 }).listen(0, '127.0.0.1');
 
 const app = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://localhost');
-  if (u.pathname === '/__p') {
+  if (u.pathname === '/__p' || u.pathname === '/__i') {
     const hd = {}; for (const [k, v] of Object.entries(req.headers)) hd[k] = v;
     const r = await open(u.searchParams.get('u'), hd, { allowPrivate: true });
     const resp = toResponse(r, Readable);
@@ -79,13 +91,17 @@ await p.waitForSelector('#app:not([hidden])', { timeout: 8000 });
 ok(hits.some((h) => h === '/get.php'), 'login Xtream tentou get.php (m3u8 deu 404, caiu para ts)');
 await p.waitForTimeout(900); await p.screenshot({ path: OUT + '/2-inicio.png' });
 ok(await p.isVisible('.rc') && (await p.locator('.rs').count()) === 5 && (await p.locator('.rd').count()) === 5, 'carrossel de indicações com 5 slides aparece');
+ok((await p.locator('.rc img[data-s]').count()) > 0, 'carrossel só carrega a imagem do slide atual (as outras ficam para depois)');
 await p.click('.rn.r'); await p.waitForTimeout(300);
 ok((await p.evaluate(() => [...document.querySelectorAll('.rs')].findIndex((e) => e.classList.contains('on')))) === 1, 'seta do carrossel avança');
 ok((await p.locator('.rw').count()) >= 3, 'trilhos com setas (ao vivo, filmes, séries)');
 await p.hover('.rw .card'); await p.waitForTimeout(500); await p.screenshot({ path: OUT + '/3-hover.png' });
 await p.click('nav [data-t="tv"]'); await p.waitForTimeout(700);
 ok((await p.locator('#grid .card').count()) === 24, 'aba Canais lista 24 canais');
-ok(await p.locator('#grid .card img').first().evaluate((i) => i.src.includes('/__p?u=')), 'logos passam pelo proxy');
+ok(await p.locator('#grid .card img').first().evaluate((i) => i.src.includes('/__i?u=')), 'logos passam pelo serviço de imagens (reduzidas)');
+await p.waitForFunction(() => S.hasE === 1, null, { timeout: 9000 });
+ok(JSON.stringify(await p.evaluate(() => Object.keys(S.epg).sort())) === '["c1","c2","c3"]', 'guia lido em pedaços e só com canais da sua lista (zzz descartado)');
+ok((await p.locator('#grid .card.tv .now').first().textContent()).includes('Jornal'), 'programa atual aparece no card do canal');
 await p.screenshot({ path: OUT + '/4-canais.png' });
 // tema
 await p.click('#cfg'); await p.waitForTimeout(400); await p.screenshot({ path: OUT + '/5-ajustes.png' });
@@ -124,5 +140,10 @@ await p.click('nav [data-t="home"]'); await p.waitForTimeout(300);
 await p.keyboard.press('/'); ok(await p.evaluate(() => document.activeElement.id) === 'q', 'tecla / foca a busca');
 await p.keyboard.type('Filme 1'); await p.waitForTimeout(700);
 ok((await p.locator('#grid .card').count()) >= 1, 'busca encontra filmes');
+// lista já processada fica em cache e o app reabre sem processar de novo
+await p.waitForTimeout(6000);
+ok((await p.evaluate(() => new Promise((r) => { const q = indexedDB.open('asc'); q.onsuccess = () => { const k = q.result.transaction('k').objectStore('k').getAllKeys(); k.onsuccess = () => r(k.result); }; }))).some((x) => String(x).startsWith('pi:')), 'lista processada foi guardada em cache');
+await p.reload(); await p.waitForSelector('#app:not([hidden])', { timeout: 8000 });
+ok((await p.locator('.rs').count()) === 5, 'ao reabrir, a lista vem do cache e o início aparece');
 await b.close(); iptv.close(); app.close();
 console.log(errs.length ? '\nERROS:\n' + errs.join('\n') : '\nTUDO OK'); process.exit(errs.length ? 1 : 0);

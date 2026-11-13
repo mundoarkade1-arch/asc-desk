@@ -1,9 +1,10 @@
 'use strict';
-const { app, BrowserWindow, ipcMain, protocol, session, safeStorage, Notification, Menu, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, session, safeStorage, Notification, Menu, shell, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { Readable } = require('stream');
 const { open, toResponse } = require('./lib/proxy');
+const { createImageService } = require('./lib/images');
 
 const SRC = path.join(__dirname, 'src');
 const SCHEME = 'app';
@@ -55,9 +56,18 @@ function serveFile(urlPath) {
     return new Response('not found', { status: 404 });
   }
 }
+let images = null; /* criado quando o app abre (precisa da pasta de dados do usuário) */
 async function handleProtocol(request) {
   const u = new URL(request.url);
   if (u.host !== 'asc') return new Response('forbidden', { status: 403 });
+  if (u.pathname === '/__i') {
+    /* Capa/logo reduzida e guardada em disco. Se falhar, a interface cai para /__p (original). */
+    if (request.method !== 'GET' || !images) return new Response(null, { status: 405 });
+    const target = u.searchParams.get('u');
+    if (!target) return new Response(null, { status: 400 });
+    const w = [200, 320, 640].find((x) => (Number(u.searchParams.get('w')) || 320) <= x) || 640;
+    try { return await images.handle(target, w, request.signal); } catch { return new Response(null, { status: 502 }); }
+  }
   if (u.pathname === '/__p') {
     if (request.method !== 'GET') return new Response(null, { status: 405 });
     const target = u.searchParams.get('u');
@@ -176,7 +186,9 @@ app.on('window-all-closed', () => app.quit());
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
+  images = createImageService({ open, nativeImage, dir: path.join(app.getPath('userData'), 'imgcache') });
   protocol.handle(SCHEME, handleProtocol);
+  setTimeout(() => images.prune(), 20000); /* limpeza do cache de imagens, sem atrasar a abertura */
   const ses = session.defaultSession;
   ses.setPermissionRequestHandler((wc, perm, cb) => cb(perm === 'fullscreen' || perm === 'pictureInPicture'));
   ses.setPermissionCheckHandler((wc, perm) => perm === 'fullscreen' || perm === 'pictureInPicture');

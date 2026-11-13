@@ -9,7 +9,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "start": "electron .",
-    "test": "node --test test/proxy.test.js",
+    "test": "node --test test/proxy.test.js test/images.test.js",
     "vendor": "node scripts/vendor.js",
     "postinstall": "node scripts/vendor.js",
     "dist": "electron-builder --win --publish never",
