@@ -17,7 +17,7 @@ html[data-ac=g]{--a1:#8FD9C4;--a2:#6CC2AB;--ar:143,217,196}
 html[data-ac=o]{--a1:#E3C99A;--a2:#CDB07C;--ar:227,201,154}
 *{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
 html{font-size:15px;background:var(--bg)}
-body{background:var(--bg) url(fundo.jpg) center/cover no-repeat fixed;color:var(--t);font:400 var(--u)/1.5 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased;user-select:none}
+body{background:var(--bg) url(fundo.jpg) center/cover no-repeat;color:var(--t);font:400 var(--u)/1.5 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;height:100vh;overflow:hidden;-webkit-font-smoothing:antialiased;user-select:none}
 input,textarea{user-select:text}
 button,input,textarea{font:inherit;color:inherit}
 [hidden]{display:none!important}
@@ -72,11 +72,9 @@ main{overflow-y:auto;padding:.8em 2em 2.5em;overscroll-behavior:contain;scroll-b
 @keyframes in{from{opacity:0;transform:translateY(10px)}}@keyframes fd{from{opacity:0}}
 /* ---------- cards ---------- */
 #grid{display:grid;gap:1.3em;grid-template-columns:repeat(auto-fill,minmax(11em,1fr))}
-.card{position:relative;background:var(--c);border-radius:var(--rad);border:1px solid var(--ln);overflow:hidden;cursor:pointer;display:flex;flex-direction:column;contain:content;box-shadow:var(--sh1);transition:transform .22s var(--ease),box-shadow .22s,border-color .22s;animation:in .4s var(--ease) both}
-.card:nth-child(2){animation-delay:.03s}.card:nth-child(3){animation-delay:.06s}.card:nth-child(4){animation-delay:.09s}.card:nth-child(5){animation-delay:.12s}.card:nth-child(6){animation-delay:.15s}.card:nth-child(n+7){animation-delay:.18s}
-.card:hover,.card:focus-visible{transform:translateY(-4px);border-color:var(--glow);box-shadow:var(--sh2),0 0 0 3px rgba(124,147,179,.18);z-index:2}
+.card{position:relative;background:var(--c);border-radius:var(--rad);border:1px solid var(--ln);overflow:hidden;cursor:pointer;display:flex;flex-direction:column;contain:content;box-shadow:var(--sh1);transition:border-color .2s,box-shadow .2s}
+.card:hover,.card:focus-visible{border-color:var(--glow);box-shadow:var(--sh2),0 0 0 3px rgba(124,147,179,.18);z-index:2}
 .card:focus-visible{border-color:var(--a1);box-shadow:var(--sh2),0 0 0 3px rgba(var(--ar),.35)}
-.card:active{transform:scale(.98)}
 .im{aspect-ratio:2/3;background:linear-gradient(160deg,var(--c2),var(--c));position:relative;display:grid;place-items:center}
 .im::after{content:"";position:absolute;inset:auto 0 0;height:34%;background:linear-gradient(transparent,rgba(15,19,26,.5));pointer-events:none}
 .card.tv .im{aspect-ratio:16/10}
@@ -144,7 +142,7 @@ main{overflow-y:auto;padding:.8em 2em 2.5em;overscroll-behavior:contain;scroll-b
 #toast.q{background:var(--c);color:var(--m);font-size:.85em;padding:.45em 1em;border-radius:99px;pointer-events:none;white-space:nowrap;box-shadow:none}
 /* ---------- player ---------- */
 #player{position:fixed;inset:0;z-index:40;background:#000;overflow:hidden;user-select:none}
-video{width:100%;height:100%;background:#000;object-fit:contain;transform:translateZ(0)}
+video{width:100%;height:100%;background:#000;object-fit:contain}
 .ov{position:absolute;left:0;right:0;display:flex;align-items:center;gap:.8em;padding:.9em 1.6em;transition:opacity .3s;z-index:2}
 #ot{top:0;background:linear-gradient(rgba(15,19,26,.92),transparent);padding-bottom:2.2em;-webkit-app-region:drag;padding-right:calc(100vw - env(titlebar-area-x,0px) - env(titlebar-area-width,100vw) + 1.6em)}
 #ot button{-webkit-app-region:no-drag}
@@ -212,6 +210,11 @@ video{width:100%;height:100%;background:#000;object-fit:contain;transform:transl
 /* spinners sempre giram: avisam que o app está trabalhando */
 #sp svg{animation:rot .9s linear infinite!important}
 /* desempenho: com o player aberto, nada atrás consome GPU */
-html:has(#player:not([hidden])) #app{visibility:hidden}
-html:has(#player:not([hidden])) .rc *{animation-play-state:paused!important}
-#player video{will-change:auto}
+html.pl #app{visibility:hidden}
+html.pl .rc *{animation-play-state:paused!important}
+html.fsw #ot{padding-right:1.6em}
+/* modo leve (PC fraco): sem animações, transições nem sombras pesadas */
+html.lite *,html.lite *::before,html.lite *::after{animation:none!important;transition:none!important;box-shadow:none!important;scroll-behavior:auto!important}
+html.lite .rd.on i{transform:scaleX(1)}
+html.lite #boot p::after,html.lite #sp svg{animation:rot .9s linear infinite!important}
+html.lite .card:hover,html.lite .card:focus-visible{border-color:var(--a1)}

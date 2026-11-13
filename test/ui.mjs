@@ -58,6 +58,8 @@ const mock = () => {
     downloadUpdate: async () => { setTimeout(() => window.__cb({ type: 'progress', percent: 40 }), 50); setTimeout(() => window.__cb({ type: 'ready', version: '1.0.9' }), 150); return true; },
     installUpdate: async () => { window.__installed = true; },
     onUpdate: (cb) => { window.__cb = cb; return () => {}; },
+    setFullscreen: async (v) => { window.__fs = v; setTimeout(() => window.__fscb && window.__fscb(v), 10); },
+    onFullscreen: (cb) => { window.__fscb = cb; return () => {}; },
   };
 };
 
@@ -108,8 +110,15 @@ await p.mouse.move(600, 400); await p.waitForTimeout(300);
 await p.screenshot({ path: OUT + '/8-player.png' });
 await p.keyboard.press('m'); ok(await p.evaluate(() => document.querySelector('#v').muted), 'tecla M silencia');
 await p.keyboard.press('ArrowDown'); ok(await p.evaluate(() => document.querySelector('#v').volume) < 1 || true, 'seta para baixo ajusta volume');
+ok(await p.evaluate(() => document.documentElement.classList.contains('pl')), 'player aberto marca a página (esconde a lista por baixo)');
+await p.keyboard.press('f'); await p.waitForTimeout(200);
+ok(await p.evaluate(() => window.__fs === true && document.documentElement.classList.contains('fsw')), 'tecla F entra em tela cheia da janela');
+await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+ok(await p.evaluate(() => window.__fs === false) && !(await p.locator('#player').isHidden()), 'Esc sai da tela cheia sem fechar o player');
+await p.keyboard.press('f'); await p.waitForTimeout(150);
 await p.click('#bk'); await p.waitForTimeout(300);
 ok(await p.locator('#player').isHidden(), 'voltar fecha o player');
+ok(await p.evaluate(() => window.__fs === false), 'fechar o player sai da tela cheia');
 // busca com atalho
 await p.click('nav [data-t="home"]'); await p.waitForTimeout(300);
 await p.keyboard.press('/'); ok(await p.evaluate(() => document.activeElement.id) === 'q', 'tecla / foca a busca');

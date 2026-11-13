@@ -13,6 +13,9 @@ protocol.registerSchemesAsPrivileged([
   { scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true } },
 ]);
 
+/* Menos travadas em PC fraco: o Windows deixa de "adivinhar" janelas cobertas e pausar o desenho do vídeo */
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+
 if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }
 app.setAppUserModelId('com.ascdesk.app');
 
@@ -61,8 +64,10 @@ async function handleProtocol(request) {
     if (!target) return new Response(null, { status: 400 });
     const hd = {};
     request.headers.forEach((v, k) => { hd[k] = v; });
+    /* Imagens (capas e logos) usam conexões separadas e limitadas: não disputam banda nem conexões com o vídeo */
+    const isImg = /image\//i.test(request.headers.get('accept') || '');
     try {
-      return toResponse(await open(target, hd, { signal: request.signal }), Readable);
+      return toResponse(await open(target, hd, { signal: request.signal, image: isImg }), Readable);
     } catch {
       return new Response(null, { status: 502 });
     }
@@ -88,6 +93,8 @@ function createWindow() {
   if (st.max) win.maximize();
   win.once('ready-to-show', () => win.show());
   win.on('close', saveState);
+  win.on('enter-full-screen', () => win && !win.isDestroyed() && win.webContents.send('win:fs-state', true));
+  win.on('leave-full-screen', () => win && !win.isDestroyed() && win.webContents.send('win:fs-state', false));
   win.on('closed', () => { win = null; });
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith(ORIGIN + '/')) e.preventDefault(); });
@@ -115,6 +122,8 @@ handle('sec:unwrap', ({ data }) => {
   if (typeof data !== 'string' || !safeStorage.isEncryptionAvailable()) throw new Error('unwrap');
   return { data: safeStorage.decryptString(Buffer.from(data, 'base64')) };
 });
+/* Tela cheia da janela inteira (mais estável que a tela cheia de elemento HTML numa janela sem moldura) */
+handle('win:fs', (on) => { if (win && !win.isDestroyed()) win.setFullScreen(!!on); });
 handle('sec:screen', ({ secure }) => { if (win) win.setContentProtection(!!secure); });
 
 /* Avisos de vencimento (funcionam enquanto o app estiver aberto) */

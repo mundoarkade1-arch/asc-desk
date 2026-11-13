@@ -11,5 +11,7 @@ contextBridge.exposeInMainWorld('ascDesk', {
   checkUpdate: () => call('upd:check'),
   downloadUpdate: () => call('upd:download'),
   installUpdate: () => call('upd:install'),
+  setFullscreen: (on) => call('win:fs', !!on),
+  onFullscreen: (cb) => { const f = (_e, v) => cb(!!v); ipcRenderer.on('win:fs-state', f); return () => ipcRenderer.removeListener('win:fs-state', f); },
   onUpdate: (cb) => { const f = (_e, m) => cb(m); ipcRenderer.on('upd:event', f); return () => ipcRenderer.removeListener('upd:event', f); },
 });

@@ -53,6 +53,9 @@ async function wipeAll(){try{const N=plug('Secure');N&&nat()&&await tmo(N.reset(
  location.reload()}
 const ACN={r:'Azul-gelo',v:'Lavanda',g:'Verde-água',o:'Areia'},ACC=()=>ACN[LS.asc_ac]?LS.asc_ac:'r';
 const accApply=()=>document.documentElement.dataset.ac=ACC();accApply();
+/* Modo leve: sem animações e sombras pesadas. Liga sozinho em PC com 4 núcleos ou menos / 4 GB ou menos, e dá para mudar em Ajustes */
+const liteOn=()=>LS.asc_lite=='1'||(LS.asc_lite!='0'&&((navigator.hardwareConcurrency||8)<=4||(navigator.deviceMemory||8)<=4));
+const liteApply=()=>document.documentElement.classList.toggle('lite',liteOn());liteApply();
 const toast=(m,q)=>{document.querySelectorAll('#toast').forEach(x=>x.remove());const t=document.createElement('div');t.id='toast';if(q)t.className='q';t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),q?2200:4000)};
 const show=id=>{window.__ascBooted=1;$('#boot').hidden=true;['add','app'].forEach(x=>$('#'+x).hidden=x!=id)};
 const bootErr=m=>{if(window.__ascBooted)return console.warn(m);$('#boot').hidden=false;$('#bm').textContent='Erro: '+m;window.__ascRecovery&&window.__ascRecovery()};
@@ -74,9 +77,9 @@ const title=n=>n.replace(/\s*[-–]?\s*(S|T)\d{1,2}\s?E\d{1,3}.*$|\s*[-–]?\s*\
 const ADG=/(^|[^a-z0-9])(adult[oa]?s?|xxx|porn[oa]?|erotic[oa]s?|sex|sexy|hentai|playboy|18 ?\+|\+ ?18|18plus)($|[^a-z0-9])/,ADN=/(^|[^a-z0-9])(xxx|playboy|sextreme|penthouse|brazzers|hustler|porn[oa]?|hentai|sexy ?hot|\+ ?18|18 ?\+)($|[^a-z0-9])/;
 const adCat=g=>ADG.test(nz(g||'')),adItem=i=>adCat(i.g)||ADN.test(nz(i.n||''));
 const AT=/([\w-]+)="([^"]*)"/g,AK={'tvg-logo':'l','group-title':'g','tvg-id':'id','tvg-name':'tn','tvg-plot':'p','plot':'p2','tvg-description':'p3','description':'p4'};
-async function parse(t){const out=[],tvg=(t.slice(0,2000).match(/(?:url-tvg|x-tvg-url)="([^",]+)/i)||[])[1],L=t.length;let cur=null,pos=0,cnt=0;
+async function parse(t){const out=[],tvg=(t.slice(0,2000).match(/(?:url-tvg|x-tvg-url)="([^",]+)/i)||[])[1],L=t.length;let cur=null,pos=0,cnt=0,yT=performance.now();
  while(pos<L){let e=t.indexOf('\n',pos);if(e<0)e=L;const ln=t.slice(pos,e).trim();pos=e+1;
-  if((++cnt&16383)==0)await sleep(0);
+  if((++cnt&511)==0&&performance.now()-yT>10){await sleep(0);yT=performance.now()}
   if(!ln)continue;
   if(ln.startsWith('#EXTINF')){const ci=ln.lastIndexOf(','),a={};let m;AT.lastIndex=0;const hd=ci>0?ln.slice(0,ci):ln;
    while((m=AT.exec(hd))){const k=AK[m[1].toLowerCase()];if(k)a[k]=m[2]}
@@ -103,9 +106,9 @@ const epgUrl=()=>CL().epg||xepg()||CL().tvg||'';
 async function loadEPG(url,manual){try{const r=await tf(url,6e4);if(!r.ok)throw 0;let t;
   if(/\.gz(\?|$)/i.test(url)&&window.DecompressionStream)t=await new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).text();else t=await r.text();
   const now=Date.now(),lim=now+12*36e5,E={},A={};
-  let nn=0;for(const m of t.matchAll(/<channel\s+id="([^"]+)"[^>]*>([\s\S]*?)<\/channel>/g)){if(++nn%1500==0)await sleep(0);const id=dec(m[1]).toLowerCase();A[id]=id;
+  let nn=0,yT=performance.now();for(const m of t.matchAll(/<channel\s+id="([^"]+)"[^>]*>([\s\S]*?)<\/channel>/g)){if(++nn%100==0&&performance.now()-yT>10){await sleep(0);yT=performance.now()}const id=dec(m[1]).toLowerCase();A[id]=id;
    for(const n of m[2].matchAll(/<display-name[^>]*>([^<]+)/g)){const d=dec(n[1]).trim();A[d.toLowerCase()]=id;A[nk(d)]=id}}
-  for(const m of t.matchAll(/<programme\s([^>]*)>([\s\S]*?)<\/programme>/g)){if(++nn%2500==0)await sleep(0);const a=m[1],
+  for(const m of t.matchAll(/<programme\s([^>]*)>([\s\S]*?)<\/programme>/g)){if(++nn%100==0&&performance.now()-yT>10){await sleep(0);yT=performance.now()}const a=m[1],
    st=a.match(/start="(\d{14})\s?([+-]\d{4})?"/),sp=a.match(/stop="(\d{14})\s?([+-]\d{4})?"/),ch=a.match(/channel="([^"]*)"/),
    ti=m[2].match(/<title[^>]*>\s*(?:<!\[CDATA\[([\s\S]*?)\]\]>|([^<]*))/);
    if(!st||!sp||!ch||!ti)continue;const s=ms(st[1],st[2]),e=ms(sp[1],sp[2]);if(e<now||s>lim)continue;
@@ -138,7 +141,7 @@ function nav(){document.querySelectorAll('nav [data-t]').forEach(b=>b.classList.
 function render(){S.view=view();S.pos=0;G.innerHTML='';$('#main').scrollTop=0;
  const ih=S.tab=='home'&&!S.q.trim();G.hidden=ih;$('#main').classList.toggle('hm',ih);$('#home').hidden=!ih;if(ih)return home();
  if(!S.view.length)G.innerHTML='<div class="empty">Nada por aqui ainda.</div>';else more()}
-function more(){if(S.pos>=S.view.length)return;const e=Math.min(S.pos+60,S.view.length);let h='';for(let k=S.pos;k<e;k++)h+=card(S.view[k],k);S.pos=e;const n0=G.children.length;G.insertAdjacentHTML('beforeend',h);fillNow(n0)}
+function more(){if(S.pos>=S.view.length)return;const e=Math.min(S.pos+(liteOn()?30:60),S.view.length);let h='';for(let k=S.pos;k<e;k++)h+=card(S.view[k],k);S.pos=e;const n0=G.children.length;G.insertAdjacentHTML('beforeend',h);fillNow(n0)}
 new IntersectionObserver(e=>e[0].isIntersecting&&more(),{rootMargin:'600px'}).observe($('#more'));
 
 /* ---------- Início: favoritos, ao vivo, filmes e séries ---------- */
@@ -279,6 +282,7 @@ $('#cfg').onclick=()=>{const e=expAt(),d=e?daysTo(e):0,
   +T('a12','iinfo','Sobre o app',null)
   +T('a13','iver','Versão','…')
   +T('a14','ipalette','Cor de destaque',ACN[ACC()])
+  +T('a15','iscreen','Modo leve (PC fraco)',liteOn()?'Ligado':'Desligado')
   +T('a5','ifolder','Canal do cliente',null)
   +T('a10','iscreen','Bloquear capturas',LS.asc_sc=='1'?'Ativado':'Desativado')
   +'</div>');
@@ -291,6 +295,7 @@ $('#cfg').onclick=()=>{const e=expAt(),d=e?daysTo(e):0,
  ver().then(v=>{const x=$('#a13 small');if(x)x.textContent=v?v.name:'—'});
  $('#a13').onclick=async()=>{const v=await ver();toast(v?'ASC DESK '+v.name+' (código '+v.code+')':'Versão indisponível.',1)};
  $('#a14').onclick=accSheet;
+ $('#a15').onclick=()=>{LS.asc_lite=liteOn()?'0':'1';liteApply();$('#sheet').hidden=true;toast(liteOn()?'Modo leve ligado: menos animações e efeitos.':'Modo leve desligado.',1)};
  $('#a5').onclick=pickCC;
  $('#a10').onclick=()=>{LS.asc_sc=LS.asc_sc=='1'?'0':'1';lastSc='';syncScr();$('#sheet').hidden=true;toast(LS.asc_sc=='1'?'Capturas bloqueadas nas telas de login e listas.':'Capturas liberadas.',1)}};
 
@@ -318,6 +323,8 @@ const CP=(window.Capacitor&&Capacitor.Plugins)||{};
 let IM=CP.Immersive;try{if(!IM&&window.Capacitor&&Capacitor.registerPlugin)IM=Capacitor.registerPlugin('Immersive')}catch{}
 const ori2=o=>{try{if(CP.ScreenOrientation)CP.ScreenOrientation.lock({orientation:o}).catch(()=>{});else if(screen.orientation&&screen.orientation.lock){const q=screen.orientation.lock(o);q&&q.catch&&q.catch(()=>{})}}catch{}};
 const ori=o=>{if(!IM)return ori2(o);try{Promise.resolve(IM.orientation({mode:o})).catch(()=>ori2(o))}catch{ori2(o)}};
+/* Tela cheia: no Windows usa a janela inteira (IPC); no navegador cai para a tela cheia HTML */
+const ADW=window.ascDesk,hasWfs=!!(ADW&&ADW.setFullscreen);let wfs=false;
 const fs=h=>{try{if(h){const e=document.documentElement;e.requestFullscreen&&e.requestFullscreen().catch(()=>{})}else if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch{}};
 const bars=h=>{if(!IM){try{if(CP.StatusBar)h?CP.StatusBar.hide():CP.StatusBar.show()}catch{}return fs(h)}try{Promise.resolve(IM.set({on:h})).catch(()=>{})}catch{}};
 /* ---------- Player ---------- */
@@ -332,7 +339,7 @@ function epgBar(){const E=$('#epg'),lv=live(),x=lv?epgOf(cur):null;$('#pe').text
 function saveP(done){if(!cur||live())return;const d=V.duration||0,t=V.currentTime;if(!isFinite(d)||!d)return;const p=ST.pos,o=p[cur.u];p[cur.u]={t,d,done:!!(done||t/d>=.92||(o&&typeof o=='object'&&o.done))};saveState()}
 /* Buffer sob medida: abre rápido (começa no 1º trecho) e guarda ~20-30s à frente para não travar */
 const HC=(lv,f)=>({xhrSetup:(x,u)=>{x.open('GET',PX(u),true)},enableWorker:true,lowLatencyMode:false,startFragPrefetch:true,capLevelToPlayerSize:true,testBandwidth:false,progressive:false,
- maxBufferLength:lv?15:60,maxMaxBufferLength:lv?30:120,maxBufferSize:lv?30e6:150e6,backBufferLength:lv?5:30,
+ capLevelOnFPSDrop:true,maxBufferLength:lv?15:30,maxMaxBufferLength:lv?30:60,maxBufferSize:lv?30e6:60e6,backBufferLength:lv?5:20,
  liveSyncDurationCount:lv?3:3,liveMaxLatencyDurationCount:lv?10:Infinity,maxBufferHole:.6,nudgeMaxRetry:8,
  manifestLoadingTimeOut:f?5000:10000,manifestLoadingMaxRetry:f?0:2,manifestLoadingRetryDelay:300,
  levelLoadingTimeOut:f?5000:8000,levelLoadingMaxRetry:f?1:4,levelLoadingRetryDelay:500,
@@ -393,7 +400,7 @@ function tick(){if(P.hidden||!cur)return;if(UP&&V.paused)return;
  stuck++;if(stuck>=2)spin(true);
  for(let i=0;i<V.buffered.length;i++){const s=V.buffered.start(i);if(s>t&&s-t<3){try{V.currentTime=s+.05}catch{}break}}
  if(live()&&!started&&stuck==15)toast('Este canal está demorando para abrir…');
- if(stuck>=(started?(live()?4:12):(live()?6:15)))recover()}
+ if(stuck>=(started?(live()?10:25):(live()?14:30)))recover()}
 function recover(){if(P.hidden||!cur)return;stuck=0;const n=++rc;
  if(live()&&!started){spin(true);if(viaNat&&CAND.length>1)ci=(ci+1)%CAND.length;src(cur.u,0,1,!viaNat);return}
  if(!live()&&n>6){wdOff();gen++;if(hls){hls.destroy();hls=null}spin(false);toast('Não foi possível reproduzir. O servidor pode estar fora do ar ou o formato não é compatível.');return}
@@ -424,18 +431,21 @@ const seekTo=e=>{const r=sk.getBoundingClientRect(),f=Math.max(0,Math.min(1,(e.c
 sk.onpointerdown=e=>{dr=1;sk.setPointerCapture(e.pointerId);seekTo(e);ui()};
 sk.onpointermove=e=>{if(dr){seekTo(e);ui()}};
 sk.onpointerup=e=>{if(dr){const f=seekTo(e);dr=0;if(V.duration)V.currentTime=f*V.duration;ui()}};
-const close=pop=>{saveP();wdOff();gen++;ori(S.dev=='tv'?'landscape':'portrait');bars(false);if(hls){hls.destroy();hls=null}mpOff();UP=true;V.pause();V.removeAttribute('src');V.load();P.hidden=true;spin(false);if(S.tab=='fav'||S.tab=='home')render();if(pop!==1&&history.state&&history.state.p)history.back()};
+const close=pop=>{if(hasWfs&&wfs)ADW.setFullscreen(false);saveP();wdOff();gen++;ori(S.dev=='tv'?'landscape':'portrait');bars(false);if(hls){hls.destroy();hls=null}mpOff();UP=true;V.pause();V.removeAttribute('src');V.load();P.hidden=true;spin(false);if(S.tab=='fav'||S.tab=='home')render();if(pop!==1&&history.state&&history.state.p)history.back()};
 $('#bk').onclick=()=>close();
-const vol=$('#vol'),isFs=()=>document.fullscreenElement===P;
+const vol=$('#vol'),isFs=()=>hasWfs?wfs:document.fullscreenElement===P;
 $('#quality').onclick=qualityMenu;
 const volUi=()=>{vol.value=V.muted?0:V.volume;vol.style.setProperty('--v',(V.muted?0:V.volume)*100+'%');ic('#mu',V.muted||V.volume==0?'imute':'ivol');LS.asc_vol=String(V.volume)};
 V.onvolumechange=volUi;V.volume=isFinite(+LS.asc_vol)&&LS.asc_vol!=null&&LS.asc_vol!==''?Math.min(1,Math.max(0,+LS.asc_vol)):1;volUi();
 vol.oninput=()=>{V.muted=false;V.volume=+vol.value};
 $('#mu').onclick=()=>{V.muted=!V.muted};
 const setVol=d=>{V.muted=false;V.volume=Math.min(1,Math.max(0,Math.round((V.volume+d)*100)/100));ui();toast('Volume '+Math.round(V.volume*100)+'%',1)};
-const togFs=()=>{try{isFs()?document.exitFullscreen():P.requestFullscreen()}catch{}};
+const togFs=()=>{try{if(hasWfs)ADW.setFullscreen(!wfs);else isFs()?document.exitFullscreen():P.requestFullscreen()}catch{}};
 $('#fs').onclick=togFs;
-document.addEventListener('fullscreenchange',()=>{ic('#fs',isFs()?'ifsx':'ifs')});
+const fsUi=()=>{ic('#fs',isFs()?'ifsx':'ifs');document.documentElement.classList.toggle('fsw',isFs())};
+document.addEventListener('fullscreenchange',fsUi);if(hasWfs)ADW.onFullscreen(v=>{wfs=!!v;fsUi()});
+/* a classe 'pl' (player aberto) é colocada pelo JS: mais leve que o seletor :has() no CSS */
+new MutationObserver(()=>document.documentElement.classList.toggle('pl',!P.hidden)).observe(P,{attributes:true,attributeFilter:['hidden']});
 $('#pip').onclick=async()=>{try{document.pictureInPictureElement?await document.exitPictureInPicture():await V.requestPictureInPicture()}catch{toast('Imagem sobre imagem indisponível para este vídeo.',1)}};
 V.onclick=()=>{clearTimeout(ck);ck=setTimeout(tog,230)};V.ondblclick=()=>{clearTimeout(ck);togFs()};let ck;
 P.addEventListener('pointermove',e=>{if(e.pointerType=='mouse')ui()});
@@ -453,7 +463,7 @@ addEventListener('keydown',e=>{const k=e.key;
  if(!LK.hidden){if(/^\d$/.test(k)){e.preventDefault();pinKey(k)}else if(k=='Backspace'){e.preventDefault();pinKey('x')}else if((k=='Escape'||k=='GoBack'||k=='BrowserBack'||e.keyCode==4)&&pinCan){e.preventDefault();pinCancel()}else if(S.dev=='tv'&&k.startsWith('Arrow'))nvg(e,LK);return}
  if(!P.hidden){const hid=P.classList.contains('h'),onb=document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#player button');ui();
   if(!$('#sheet').hidden&&BACK.includes(k)){e.preventDefault();$('#sheet').hidden=true;$('#quality').focus();return}
-  if(k=='Escape'&&isFs())return;
+  if(k=='Escape'&&isFs()){if(hasWfs){e.preventDefault();togFs()}return}
   if(BACK.includes(k)||e.keyCode==4){e.preventDefault();return close()}
   if(k=='f'||k=='F'||k=='F11'){e.preventDefault();return togFs()}
   if(k=='m'||k=='M'){e.preventDefault();V.muted=!V.muted;return}
