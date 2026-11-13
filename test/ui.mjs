@@ -87,8 +87,8 @@ ok(await p.locator('#grid .card img').first().evaluate((i) => i.src.includes('/_
 await p.screenshot({ path: OUT + '/4-canais.png' });
 // tema
 await p.click('#cfg'); await p.waitForTimeout(400); await p.screenshot({ path: OUT + '/5-ajustes.png' });
-await p.click('#a14'); await p.click('.swb[data-ac="b"]'); await p.waitForTimeout(300);
-ok(await p.evaluate(() => document.documentElement.dataset.ac) === 'b', 'cor de destaque muda na hora');
+await p.click('#a14'); await p.click('.swb[data-ac="v"]'); await p.waitForTimeout(300);
+ok(await p.evaluate(() => document.documentElement.dataset.ac) === 'v', 'cor de destaque muda na hora');
 await p.screenshot({ path: OUT + '/6-azul.png' });
 await p.click('#cfg'); await p.click('#a14'); await p.click('.swb[data-ac="r"]');
 // atualização

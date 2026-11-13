@@ -75,10 +75,10 @@ function createWindow() {
   const st = loadState();
   win = new BrowserWindow({
     x: st.x, y: st.y, width: st.w, height: st.h, minWidth: 900, minHeight: 600,
-    backgroundColor: '#000000', show: false, title: 'ASC DESK',
+    backgroundColor: '#0F131A', show: false, title: 'ASC DESK',
     icon: path.join(__dirname, 'build', 'icon.ico'),
     titleBarStyle: 'hidden',
-    titleBarOverlay: { color: '#000000', symbolColor: '#FFFFFF', height: 40 },
+    titleBarOverlay: { color: '#0F131A', symbolColor: '#FFFFFF', height: 40 },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true,

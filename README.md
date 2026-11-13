@@ -43,7 +43,7 @@ O workflow assina sozinho quando os dois existem. Nunca envie o `.pfx` ao reposi
 
 ## Recursos
 
-Listas M3U e Xtream (login), EPG, favoritos, continuar assistindo, controle parental, bloqueio por PIN, cofre criptografado (Windows DPAPI), vencimento com aviso, canais `.m3u8` e `.ts`, 5 cores de destaque.
+Listas M3U e Xtream (login), EPG, favoritos, continuar assistindo, controle parental, bloqueio por PIN, cofre criptografado (Windows DPAPI), vencimento com aviso, canais `.m3u8` e `.ts`, 4 cores de destaque discretas (azul-gelo por padrão).
 
 ## Segurança
 

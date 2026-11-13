@@ -51,7 +51,7 @@ async function wipeAll(){try{const N=plug('Secure');N&&nat()&&await tmo(N.reset(
  try{await new Promise(r=>{const q=indexedDB.deleteDatabase('asc');q.onsuccess=q.onerror=q.onblocked=()=>r()})}catch{}
  try{LS.clear();sessionStorage.clear()}catch{}
  location.reload()}
-const ACN={r:'Chama',b:'Azul',v:'Roxo',g:'Verde',o:'Gelo'},ACC=()=>ACN[LS.asc_ac]?LS.asc_ac:'r';
+const ACN={r:'Azul-gelo',v:'Lavanda',g:'Verde-água',o:'Areia'},ACC=()=>ACN[LS.asc_ac]?LS.asc_ac:'r';
 const accApply=()=>document.documentElement.dataset.ac=ACC();accApply();
 const toast=(m,q)=>{document.querySelectorAll('#toast').forEach(x=>x.remove());const t=document.createElement('div');t.id='toast';if(q)t.className='q';t.textContent=m;document.body.append(t);setTimeout(()=>t.remove(),q?2200:4000)};
 const show=id=>{window.__ascBooted=1;$('#boot').hidden=true;['add','app'].forEach(x=>$('#'+x).hidden=x!=id)};
@@ -249,7 +249,7 @@ function eps(s){const m={};for(const e of s.eps)(m[seas(e)]||=[]).push(e);
  const flat=ks.flatMap(k=>m[k]),L=ST.last[s.n];let t=L&&flat.find(e=>e.u==L),nx=null;
  if(t&&isDone(t.u)&&!isPart(t.u)){const j=flat.indexOf(t)+1;if(flat[j]){t=flat[j];nx=t}}
  let cs=t?seas(t):ks[0];const fk=favK(s);
- sh(hdr(s)+`<div class="sbar"><button class="btn" id="sb"><span id="sbt"></span><svg class="i" style="width:1.1em;height:1.1em"><use href="#chev"/></svg></button><button class="btn fv${S.fav.includes(fk)?' on':''}" id="sf"><svg class="i"><use href="#star"/></svg></button></div><div class="sg" id="sl" hidden>${ks.map(k=>`<button class="btn" data-s="${k}">Temporada ${k}</button>`).join('')}</div><div class="eg" id="eg"></div><div class="lg"><span><i style="background:#f5c518"></i>Assistido</span><span><i style="background:#22c55e"></i>Parei aqui</span></div>`);
+ sh(hdr(s)+`<div class="sbar"><button class="btn" id="sb"><span id="sbt"></span><svg class="i" style="width:1.1em;height:1.1em"><use href="#chev"/></svg></button><button class="btn fv${S.fav.includes(fk)?' on':''}" id="sf"><svg class="i"><use href="#star"/></svg></button></div><div class="sg" id="sl" hidden>${ks.map(k=>`<button class="btn" data-s="${k}">Temporada ${k}</button>`).join('')}</div><div class="eg" id="eg"></div><div class="lg"><span><i style="background:#3C4A5E"></i>Assistido</span><span><i style="background:var(--a1)"></i>Parei aqui</span></div>`);
  const draw=()=>{$('#sbt').textContent='Temporada '+cs;$('#sl').hidden=true;$('#eg').innerHTML=m[cs].map((e,i)=>{const c=isPart(e.u)?'pg':isDone(e.u)?'dn':nx&&e===nx?'nx':'';return`<button class="ep ${c}" data-u="${esc(e.u)}" title="${esc(e.n)}">${epn(e)||i+1}</button>`}).join('')};draw();
  $('#sh').onclick=e=>{const b=e.target.closest('button');if(!b)return;
   if(b.id=='sb')$('#sl').hidden=!$('#sl').hidden;
