@@ -380,14 +380,14 @@ function saveP(done){if(!cur||live())return;const d=V.duration||0,t=V.currentTim
 /* Buffer sob medida: abre rápido (começa no 1º trecho) e guarda ~20-30s à frente para não travar */
 const HC=(lv,f)=>({xhrSetup:(x,u)=>{x.open('GET',PX(u),true)},enableWorker:true,lowLatencyMode:false,startFragPrefetch:true,capLevelToPlayerSize:true,testBandwidth:false,progressive:false,
  capLevelOnFPSDrop:true,maxBufferLength:lv?15:30,maxMaxBufferLength:lv?30:60,maxBufferSize:lv?30e6:60e6,backBufferLength:lv?5:20,
- liveSyncDurationCount:lv?3:3,liveMaxLatencyDurationCount:lv?10:Infinity,maxBufferHole:.6,nudgeMaxRetry:8,
+ liveSyncDurationCount:lv?4:3,liveMaxLatencyDurationCount:lv?16:Infinity,maxBufferHole:1.2,nudgeMaxRetry:8,
  manifestLoadingTimeOut:f?12000:15000,manifestLoadingMaxRetry:f?1:3,manifestLoadingRetryDelay:600,
  levelLoadingTimeOut:f?10000:12000,levelLoadingMaxRetry:f?2:4,levelLoadingRetryDelay:600,
  fragLoadingTimeOut:f?12000:20000,fragLoadingMaxRetry:f?3:6,fragLoadingRetryDelay:500,fragLoadingMaxRetryTimeout:8000,
  abrEwmaDefaultEstimate:3e6,abrBandWidthFactor:.8,abrBandWidthUpFactor:.6});
 let PLC;const pld=()=>PLC||(PLC=(()=>{const B=Hls.DefaultConfig.loader;return class extends B{load(c,g,cb){const ok=cb.onSuccess;
   super.load(c,g,Object.assign({},cb,{onSuccess:(r,st,x,n)=>{try{if(r&&n&&n.getResponseHeader){r.url=n.getResponseHeader('X-Final-Url')||c.url}}catch{}return ok(r,st,x,n)}}))}}})());
-let mp=null,MLP,RB=0,rbT=0,stl=0,stT=Date.now();
+let mp=null,MLP,RB=0,rbT=0,stl=0,stT=Date.now(),stA=[],FL={n:0,t:0,d:0,f:0,s:0,b:0};
 /* Canal .ts ao vivo: quando a imagem para por falta de dados, o Chromium volta a tocar com 1 ou 2 quadros e para de novo (engasgo em série).
    Aqui o vídeo espera juntar ~3 s e só então volta (no máximo 10 s de espera). */
 function rbOff(){clearInterval(rbT);rbT=0;RB=0}
@@ -452,6 +452,8 @@ function src(u,at,fresh,forceNat){const g=++gen;if(live())u=CAND[ci]||u;UP=false
    const h=hls=new Hls(Object.assign(HC(hlsLv,hlsLv&&!started&&CAND.length>1),LD,at>0?{startPosition:at}:{}));h.loadSource(u);h.attachMedia(V);
     h.on(Hls.Events.MANIFEST_PARSED,()=>{qualityApply(h);V.play().catch(()=>{})});
    h.on(Hls.Events.BUFFER_CODECS,(_,d)=>{if(h==hls)BC=d});
+   h.on(Hls.Events.FRAG_LOADED,(_,d)=>{try{if(h!=hls)return;const f=d.frag,st=(f&&f.stats)||d.stats,du=f&&f.duration;if(!st||!du||!st.loading||!st.loading.end)return;
+    const t=(st.loading.end-st.loading.start)/1e3,fb=Math.max(0,(st.loading.first-st.loading.start)/1e3);FL.n++;FL.t+=t;FL.d+=du;FL.f+=fb;FL.b+=st.total||0;if(t>du*.8)FL.s++}catch{}});
    h.on(Hls.Events.ERROR,(_,d)=>{if(h!=hls)return;const cd=d.response&&d.response.code,bad=d.fatal||d.details=='manifestLoadError'||d.details=='manifestLoadTimeOut';
     let xe='';try{xe=(d.networkDetails&&d.networkDetails.getResponseHeader&&d.networkDetails.getResponseHeader('X-Err'))||''}catch{}
     const sfx=(cd?' (HTTP '+cd+')':'')+(xe?' ['+xe+']':'');
@@ -485,7 +487,7 @@ function recover(){if(P.hidden||!cur)return;const nw=Date.now();if(nw-rcAt<1000)
  if(hls&&n%3){if(n%3==1)hls.startLoad(-1);else hls.recoverMediaError();V.play().catch(()=>{});return}
  src(cur.u,live()?0:V.currentTime,1,viaNat&&live())}
 addEventListener('online',()=>{if(!P.hidden&&cur){rc=0;recover()}});
-function play(it,list,from){if(epgAbort){try{epgAbort.abort()}catch{}epgAbort=null}V.preload='auto';cur=it;stl=0;stT=Date.now();CAND=it.t=='tv'?cands(it.u):[it.u];ci=0;tsT=0;de=0;okS=0;dead=0;sw=0;MI=null;BC=null;zap=list&&list.length?list:[it];ori('landscape');bars(true);if(P.hidden)history.pushState({p:1},'');P.hidden=false;$('#quality').hidden=true;const tv=live();
+function play(it,list,from){if(epgAbort){try{epgAbort.abort()}catch{}epgAbort=null}V.preload='auto';cur=it;stl=0;stT=Date.now();stA=[];FL={n:0,t:0,d:0,f:0,s:0,b:0};CAND=it.t=='tv'?cands(it.u):[it.u];ci=0;tsT=0;de=0;okS=0;dead=0;sw=0;MI=null;BC=null;zap=list&&list.length?list:[it];ori('landscape');bars(true);if(P.hidden)history.pushState({p:1},'');P.hidden=false;$('#quality').hidden=true;const tv=live();
  $('#pt').textContent=it.n;ic('#pv',tv?'sprev':'rw10');ic('#nx',tv?'snext':'fw10');ic('#pp','pause');$('#lv').hidden=!tv;UP=false;$('#sk').hidden=tv;$('#tm').hidden=tv;
  $('#pr').style.width=$('#bf').style.width='0';$('#th').style.left='0';$('#t1').textContent=$('#t2').textContent='0:00';
  $('#pf').classList.toggle('on',S.fav.includes(favK(it)));spin(true);src(it.u);wdOn();epgBar();ui();
@@ -497,7 +499,7 @@ const tog=()=>V.paused?(UP=false,V.play().catch(()=>{})):(UP=true,V.pause());
 $('#pv').onclick=()=>step(-1);$('#nx').onclick=()=>step(1);$('#pp').onclick=tog;
 $('#pf').onclick=()=>$('#pf').classList.toggle('on',fav(favK(cur)));
 V.onplay=()=>{UP=false;ic('#pp','pause')};V.onpause=()=>{if(RB)return;UP=true;ic('#pp','play');ui()};
-V.onloadstart=()=>spin(true);V.onwaiting=()=>{spin(true);if(started&&live())stl++;rbHit()};V.onplaying=V.oncanplay=()=>spin(false);
+V.onloadstart=()=>spin(true);V.onwaiting=()=>{spin(true);if(started&&live()){stl++;try{const b=V.buffered;stA.push(b.length?+(b.end(b.length-1)-V.currentTime).toFixed(1):0);if(stA.length>20)stA.shift()}catch{}}rbHit()};V.onplaying=V.oncanplay=()=>spin(false);
 V.onended=()=>{if(!live()){saveP(1);const i=zap.indexOf(cur);if(zap[i+1])play(zap[i+1],zap)}};
 V.onerror=()=>{if(P.hidden||!cur||dead)return;const e=V.error,c=e&&e.code,m=String(e&&e.message||'').replace(/\s+/g,' ').slice(0,70);
  dbg('Erro do vídeo (código '+c+(m?': '+m:'')+')');
@@ -535,7 +537,11 @@ function verdict(){const q=V.getVideoPlaybackQuality?V.getVideoPlaybackQuality()
  if(!started||tot<150)return 'ainda juntando dados. Deixe o canal tocar uns 30 segundos e abra esta tela de novo.';
  const pc=dr/tot*100;
  if(pc>=5)return 'O PC está perdendo '+Math.round(pc)+'% dos quadros. O problema é a decodificação (placa de vídeo ou processador), não a internet.';
- if(stl/min>=2)return 'A imagem parou '+stl+' vez(es) em '+min.toFixed(1)+' min por falta de dados. O problema é a internet ou o servidor.';
+ if(stl/min>=1.5){
+  if(FL.n>=3&&(FL.t/FL.d>.6||FL.s>0))return 'A imagem parou '+stl+' vez(es) em '+min.toFixed(1)+' min. Cada trecho de '+(FL.d/FL.n).toFixed(1)+' s demora '+(FL.t/FL.n).toFixed(1)+' s para baixar: a internet ou o servidor está entregando devagar.';
+  const m=stA.length?stA.slice().sort((x,y)=>x-y)[stA.length>>1]:0;
+  if(FL.n>=3&&m>.5)return 'A imagem parou '+stl+' vez(es) em '+min.toFixed(1)+' min mesmo com vídeo sobrando ('+m+' s guardados). Os trechos chegam rápido: o sinal do canal tem falhas ou saltos de tempo (problema do canal/servidor, não do seu PC).';
+  return 'A imagem parou '+stl+' vez(es) em '+min.toFixed(1)+' min por falta de dados (guardado na hora da parada: '+(stA.join(', ')||'?')+' s).'}
  return 'nada grave agora ('+stl+' parada(s) em '+min.toFixed(1)+' min e '+pc.toFixed(1)+'% de quadros perdidos).'}
 async function infoSheet(){if(!cur)return;ui();
  const q=V.getVideoPlaybackQuality?V.getVideoPlaybackQuality():{},M=window.MediaSource,sup=t=>M&&M.isTypeSupported&&M.isTypeSupported(t)?'sim':'não',
@@ -547,6 +553,7 @@ async function infoSheet(){if(!cur)return;ui();
   'Endereço: '+((CAND[ci]||cur.u).match(/\.(m3u8|ts)(\?|$)/i)||[,'direto'])[1],
   'Vídeo: '+vc+(MI&&MI.profile?' · perfil '+MI.profile+(MI.level?' nível '+MI.level:''):'')+(MI&&MI.chromaFormat?' · '+MI.chromaFormat:''),
   'Áudio: '+ac,
+  'Trechos: '+(FL.n?FL.n+' · cada um tem '+(FL.d/FL.n).toFixed(1)+' s e baixa em '+(FL.t/FL.n).toFixed(1)+' s (1º byte em '+(FL.f/FL.n).toFixed(1)+' s) · lentos '+FL.s+' · '+(FL.b*8/Math.max(1,FL.d)/1e6).toFixed(1)+' Mbps':'(sem dados)'),
   'Imagem: '+(V.videoWidth||'?')+'x'+(V.videoHeight||'?')+(MI&&MI.fps?' · '+(+MI.fps).toFixed(1)+' fps':''),
   'Quadros: '+(q.totalVideoFrames||0)+' · perdidos '+(q.droppedVideoFrames||0)+' · corrompidos '+(q.corruptedVideoFrames||0),
   'Este PC toca: H.264 '+sup('video/mp4; codecs="avc1.64001f"')+' · H.265 '+sup('video/mp4; codecs="hvc1.1.6.L93.B0"')+' · AC3 '+sup('audio/mp4; codecs="ac-3"')+' · EAC3 '+sup('audio/mp4; codecs="ec-3"'),
