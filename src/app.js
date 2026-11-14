@@ -350,7 +350,7 @@ const ADW=window.ascDesk,hasWfs=!!(ADW&&ADW.setFullscreen);let wfs=false;
 const fs=h=>{try{if(h){const e=document.documentElement;e.requestFullscreen&&e.requestFullscreen().catch(()=>{})}else if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch{}};
 const bars=h=>{if(!IM){try{if(CP.StatusBar)h?CP.StatusBar.hide():CP.StatusBar.show()}catch{}return fs(h)}try{Promise.resolve(IM.set({on:h})).catch(()=>{})}catch{}};
 /* ---------- Player ---------- */
-let hls,cur,zap=[],ht,dr=0,lt=0,tsT=0,de=0,okS=0,dead=0;const P=$('#player'),sk=$('#sk');
+let hls,cur,zap=[],ht,dr=0,lt=0,tsT=0,de=0,okS=0,dead=0,sw=0,rcAt=0;const P=$('#player'),sk=$('#sk');
 const fmt=t=>{if(!isFinite(t))return'0:00';t=Math.floor(t);const h=Math.floor(t/3600),m=Math.floor(t%3600/60),q=String(t%60).padStart(2,'0');return h?`${h}:${String(m).padStart(2,'0')}:${q}`:`${m}:${q}`};
 const ic=(id,n)=>$(id).querySelector('use').setAttribute('href','#'+n);
 const live=()=>cur&&cur.t=='tv',spin=on=>$('#sp').hidden=!(on&&!dead);
@@ -385,16 +385,27 @@ function qualityMenu(){if(!hls)return;const levels=qualityLevels(hls);if(levels.
 const XL=/^(https?:\/\/[^/]+\/(?:live\/)?[^/]+\/[^/]+\/\d+)(\.m3u8|\.ts)?(\?.*)?$/i;
 let CAND=[],ci=0;
 const fmK=u=>{try{return new URL(u).host}catch{return''}};
-const cands=u=>{const m=u.match(XL);if(!m)return[u];const b=m[1],q=m[3]||'',a=[b+'.m3u8'+q,b+'.ts'+q],w=jg('asc_fm',{})[fmK(u)]||(m[2]||'').slice(1).toLowerCase();return w=='ts'?a.reverse():a};
+const cands=u=>{const m=u.match(XL);if(!m)return[u];const b=m[1],q=m[3]||'',a=[b+'.m3u8'+q,b+'.ts'+q],w=jg('asc_fu',{})[b]||jg('asc_fm',{})[fmK(u)]||(m[2]||'').slice(1).toLowerCase();return w=='ts'?a.reverse():a};
 const nextCand=()=>{if(ci+1>=CAND.length)return false;ci++;spin(true);src(cur.u,0,1,false);return true};
 const M4='Este canal usa um formato que o app não consegue reproduzir neste computador (erro 4).',
- M3='Não foi possível decodificar o vídeo deste canal (erro 3). Ele pode usar H.265/HEVC ou áudio AC3, que este computador não suporta.',
+ M3='Falha ao decodificar o vídeo deste canal (erro 3). O sinal deste canal pode estar com defeito ou usar um formato que este computador não suporta.',
  MO='Não consegui abrir este canal. O servidor não respondeu ou o formato não é compatível.',
  CNAT=!!V.canPlayType('application/vnd.apple.mpegurl'); /* o Chromium do PC normalmente não toca HLS sozinho: só o hls.js toca */
 /* Para de tentar e avisa o motivo (antes ficava rodando a bolinha para sempre) */
 function giveUp(m){dead=1;wdOff();gen++;if(hls){try{hls.destroy()}catch{}hls=null}mpOff();try{V.pause()}catch{}spin(false);UP=true;$('#pe').textContent=m;toast(m);ui()}
-/* Erro de decodificação no hls.js: 1ª vez recupera, 2ª troca o codec de áudio, depois tenta a outra versão do canal ou desiste */
-function mediaFix(h){const n=++de;if(n==1){h.recoverMediaError();return}if(n==2){try{h.swapAudioCodec()}catch{}h.recoverMediaError();return}if(live()&&!started&&nextCand())return;giveUp(M3)}
+/* Erro de decodificação (código 3). Escada de tentativas, sem loop:
+   hls.js: 1ª recupera · 2ª troca o codec de áudio · depois troca para a outra versão do canal (.ts ↔ .m3u8) · depois avisa.
+   mpegts.js: 1ª reinicia o leitor · depois troca para a outra versão do canal · depois avisa.
+   A versão que funcionou fica guardada para esse canal. */
+function switchCand(){ci=(ci+1)%CAND.length;
+ try{const m=(CAND[ci]||'').match(XL);if(m){const o=jg('asc_fu',{});o[m[1]]=/\.ts(\?|$)/i.test(CAND[ci])?'ts':'m3u8';const ks=Object.keys(o);if(ks.length>300)delete o[ks[0]];LS.asc_fu=JSON.stringify(o)}}catch{}
+ de=0;spin(true);src(cur.u,0,1,false)}
+function mediaFix(h){const n=++de,again=()=>setTimeout(()=>{if(!P.hidden&&cur&&!dead)recover()},400);
+ if(h&&n<=2){if(n==2)try{h.swapAudioCodec()}catch{}h.recoverMediaError();return}
+ if(!h&&n==1){again();return}
+ if(live()&&CAND.length>1&&!sw){sw=1;switchCand();return}
+ if(n>=3)return giveUp(M3);
+ again()}
 function src(u,at,fresh,forceNat){const g=++gen;if(live())u=CAND[ci]||u;UP=false;viaNat=!!forceNat;
  const nativ=()=>{viaNat=true;V.src=PX(u);if(at>0)V.addEventListener('loadedmetadata',()=>{try{V.currentTime=at}catch{}},{once:true});V.play().catch(()=>{})};
  if(hls&&!fresh&&!forceNat&&hlsLv&&live()&&!(at>0)){try{hls.stopLoad();hls.loadSource(u);hls.startLoad(-1);return}catch{}}
@@ -402,7 +413,9 @@ function src(u,at,fresh,forceNat){const g=++gen;if(live())u=CAND[ci]||u;UP=false
  /* Fluxo MPEG-TS puro: o Chromium não toca .ts sozinho, então usamos o leitor mpegts.js */
  const tsGo=()=>{viaNat=true;ML().then(()=>{if(g!=gen)return;
    if(window.mpegts&&mpegts.isSupported()){const p=mp=mpegts.createPlayer({type:'mpegts',isLive:true,url:/^https?:\/\//i.test(u)&&nat()?location.origin+PX(u):u},{enableWorker:LS.asc_w=='1',enableStashBuffer:true,stashInitialSize:128,liveBufferLatencyChasing:false,autoCleanupSourceBuffer:true,autoCleanupMaxBackwardDuration:30,autoCleanupMinBackwardDuration:12});
-    p.attachMediaElement(V);p.on(mpegts.Events.ERROR,(t,d,i)=>{if(p!=mp)return;const cd=i&&i.code;if(!started&&[401,403,404,410].includes(cd)&&nextCand())return;dbg('Canal .ts: '+d+(cd?' (HTTP '+cd+')':'')+(i&&i.msg?' '+String(i.msg).slice(0,70):''));
+    p.attachMediaElement(V);p.on(mpegts.Events.ERROR,(t,d,i)=>{if(p!=mp)return;const cd=t=='NetworkError'&&i&&i.code;if(!started&&[401,403,404,410].includes(cd)&&nextCand())return;
+     if(V.error)return; /* o vídeo já está em erro: quem trata é o aviso do vídeo (evita reiniciar duas vezes) */
+     dbg('Canal .ts: '+d+(cd?' (HTTP '+cd+')':'')+(i&&i.msg?' '+String(i.msg).slice(0,70):''));
      if(!started&&d=='FormatUnsupported'){giveUp(M4);return}
      setTimeout(()=>{if(p==mp&&!P.hidden&&cur&&!dead)recover()},800)});
     p.load();Promise.resolve(p.play()).catch(()=>{})}
@@ -437,14 +450,14 @@ function tick(){if(P.hidden||!cur)return;if(UP&&V.paused)return;
  for(let i=0;i<V.buffered.length;i++){const s=V.buffered.start(i);if(s>t&&s-t<3){try{V.currentTime=s+.05}catch{}break}}
  if(live()&&!started&&stuck==15)toast('Este canal está demorando para abrir…');
  if(stuck>=(started?(live()?10:25):(live()?10:20)))recover()}
-function recover(){if(P.hidden||!cur)return;stuck=0;const n=++rc;
+function recover(){if(P.hidden||!cur)return;const nw=Date.now();if(nw-rcAt<1000)return;rcAt=nw;stuck=0;const n=++rc;
  if(live()&&!started){if(n>=5)return giveUp(MO);spin(true);if(CAND.length>1)ci=(ci+1)%CAND.length;src(cur.u,0,1,CNAT&&!viaNat);return}
  if(!live()&&n>6){wdOff();gen++;if(hls){hls.destroy();hls=null}spin(false);toast('Não foi possível reproduzir. O servidor pode estar fora do ar ou o formato não é compatível.');return}
  spin(true);
  if(hls&&n%3){if(n%3==1)hls.startLoad(-1);else hls.recoverMediaError();V.play().catch(()=>{});return}
  src(cur.u,live()?0:V.currentTime,1,viaNat&&live())}
 addEventListener('online',()=>{if(!P.hidden&&cur){rc=0;recover()}});
-function play(it,list,from){V.preload='auto';cur=it;CAND=it.t=='tv'?cands(it.u):[it.u];ci=0;tsT=0;de=0;okS=0;dead=0;zap=list&&list.length?list:[it];ori('landscape');bars(true);if(P.hidden)history.pushState({p:1},'');P.hidden=false;$('#quality').hidden=true;const tv=live();
+function play(it,list,from){V.preload='auto';cur=it;CAND=it.t=='tv'?cands(it.u):[it.u];ci=0;tsT=0;de=0;okS=0;dead=0;sw=0;zap=list&&list.length?list:[it];ori('landscape');bars(true);if(P.hidden)history.pushState({p:1},'');P.hidden=false;$('#quality').hidden=true;const tv=live();
  $('#pt').textContent=it.n;ic('#pv',tv?'sprev':'rw10');ic('#nx',tv?'snext':'fw10');ic('#pp','pause');$('#lv').hidden=!tv;UP=false;$('#sk').hidden=tv;$('#tm').hidden=tv;
  $('#pr').style.width=$('#bf').style.width='0';$('#th').style.left='0';$('#t1').textContent=$('#t2').textContent='0:00';
  $('#pf').classList.toggle('on',S.fav.includes(favK(it)));spin(true);src(it.u);wdOn();epgBar();ui();
@@ -462,6 +475,7 @@ V.onerror=()=>{if(P.hidden||!cur||dead)return;const e=V.error,c=e&&e.code,m=Stri
  dbg('Erro do vídeo (código '+c+(m?': '+m:'')+')');
  if(c==4&&!hls&&!mp){if(live()&&!started&&nextCand())return;return giveUp(M4)} /* formato não suportado: tentar de novo não resolve */
  if(c==3&&hls&&hls.recoverMediaError)return mediaFix(hls);
+ if(c==3&&mp&&live())return mediaFix(null);
  if(c==3&&!live()&&de++>=1)return giveUp(M3);
  spin(true);setTimeout(()=>{if(!P.hidden&&cur&&!dead)recover()},1500)};
 V.onprogress=()=>{if(V.duration&&V.buffered.length)$('#bf').style.width=V.buffered.end(V.buffered.length-1)/V.duration*100+'%'};

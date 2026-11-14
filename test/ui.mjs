@@ -131,12 +131,20 @@ ok(await p.evaluate(() => document.documentElement.classList.contains('pl')), 'p
 await p.evaluate(() => { CAND = [CAND[ci] || CAND[0]]; ci = 0; hls = null; mp = null; Object.defineProperty(V, 'error', { value: { code: 4, message: 'DEMUXER_ERROR' }, configurable: true }); V.onerror(); });
 await p.waitForTimeout(200);
 ok(await p.evaluate(() => document.querySelector('#sp').hidden) && (await p.textContent('#pe')).includes('erro 4'), 'erro 4: para de carregar e mostra o motivo');
-// erro 3 (decodificação): 1ª recupera, 2ª troca o áudio, 3ª desiste com aviso
-await p.evaluate(() => { dead = 0; de = 0; window.__rc = 0; window.__sw = 0; hls = { recoverMediaError() { window.__rc++; }, swapAudioCodec() { window.__sw++; }, destroy() {} }; Object.defineProperty(V, 'error', { value: { code: 3, message: 'DECODE' }, configurable: true }); V.onerror(); V.onerror(); });
+// erro 3 (decodificação): 1ª recupera, 2ª troca o áudio, 3ª troca para a outra versão do canal e lembra
+await p.evaluate(() => { dead = 0; de = 0; sw = 0; CAND = cands(cur.u); ci = 0; window.__rc = 0; window.__sw = 0; hls = { recoverMediaError() { window.__rc++; }, swapAudioCodec() { window.__sw++; }, destroy() {} }; Object.defineProperty(V, 'error', { value: { code: 3, message: 'DECODE' }, configurable: true }); V.onerror(); V.onerror(); });
 ok(await p.evaluate(() => window.__rc === 2 && window.__sw === 1), 'erro 3: recupera e na 2ª troca o codec de áudio');
 await p.evaluate(() => { V.onerror(); });
+await p.waitForTimeout(300);
+ok(await p.evaluate(() => ci === 1 && !!LS.asc_fu), 'erro 3: na 3ª vez troca para a outra versão do canal e lembra a escolha');
+// leitor .ts (mpegts): 1ª vez só reinicia, sem desistir
+await p.evaluate(() => { dead = 0; de = 0; sw = 0; hls = null; mp = { destroy() {} }; Object.defineProperty(V, 'error', { value: { code: 3, message: 'DECODE' }, configurable: true }); V.onerror(); });
+ok(await p.evaluate(() => de === 1 && !dead), 'erro 3 no leitor .ts: primeiro só reinicia o leitor');
+await p.waitForTimeout(700);
+// sem outra versão para tentar: na 3ª vez desiste e explica (sem loop)
+await p.evaluate(() => { dead = 0; de = 0; sw = 0; CAND = [CAND[0]]; ci = 0; hls = { recoverMediaError() {}, swapAudioCodec() {}, destroy() {} }; Object.defineProperty(V, 'error', { value: { code: 3, message: 'DECODE' }, configurable: true }); V.onerror(); V.onerror(); V.onerror(); });
 await p.waitForTimeout(150);
-ok((await p.textContent('#pe')).includes('erro 3') && await p.evaluate(() => document.querySelector('#sp').hidden), 'erro 3: na 3ª vez desiste e explica (sem loop)');
+ok((await p.textContent('#pe')).includes('erro 3') && await p.evaluate(() => document.querySelector('#sp').hidden), 'erro 3: sem alternativa, desiste e explica (sem loop)');
 await p.evaluate(() => { delete V.error; });
 await p.keyboard.press('f'); await p.waitForTimeout(200);
 ok(await p.evaluate(() => window.__fs === true && document.documentElement.classList.contains('fsw')), 'tecla F entra em tela cheia da janela');
