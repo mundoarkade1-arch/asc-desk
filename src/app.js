@@ -371,7 +371,7 @@ const fmt=t=>{if(!isFinite(t))return'0:00';t=Math.floor(t);const h=Math.floor(t/
 const ic=(id,n)=>$(id).querySelector('use').setAttribute('href','#'+n);
 const live=()=>cur&&cur.t=='tv',spin=on=>$('#sp').hidden=!(on&&!dead);
 /* Últimos avisos de erro (aparecem em "Informações do canal") */
-const ELOG=[],elog=m=>{ELOG.push(new Date().toLocaleTimeString('pt-BR')+'  '+m);if(ELOG.length>10)ELOG.shift()};
+const ELOG=[],elog=m=>{const l=ELOG[ELOG.length-1];if(l&&l.slice(l.indexOf('  ')+2)==m)return;ELOG.push(new Date().toLocaleTimeString('pt-BR')+'  '+m);if(ELOG.length>14)ELOG.shift()};
 let dgT=0;const dbg=m=>{elog(m);if(Date.now()-dgT<2500)return;dgT=Date.now();toast(m)};
 function ui(){P.classList.remove('h');clearTimeout(ht);ht=setTimeout(()=>!V.paused&&!dr&&P.classList.add('h'),3500)}
 function epgBar(){const E=$('#epg'),lv=live(),x=lv?epgOf(cur):null;$('#pe').textContent=cur.g||'';E.hidden=!lv;if(!lv)return;
@@ -447,8 +447,11 @@ function src(u,at,fresh,forceNat){const g=++gen;if(live())u=CAND[ci]||u;UP=false
     h.on(Hls.Events.MANIFEST_PARSED,()=>{qualityApply(h);V.play().catch(()=>{})});
    h.on(Hls.Events.BUFFER_CODECS,(_,d)=>{if(h==hls)BC=d});
    h.on(Hls.Events.ERROR,(_,d)=>{if(h!=hls)return;const cd=d.response&&d.response.code,bad=d.fatal||d.details=='manifestLoadError'||d.details=='manifestLoadTimeOut';
+    let xe='';try{xe=(d.networkDetails&&d.networkDetails.getResponseHeader&&d.networkDetails.getResponseHeader('X-Err'))||''}catch{}
+    const sfx=(cd?' (HTTP '+cd+')':'')+(xe?' ['+xe+']':'');
+    if(!bad&&/Load/.test(d.details||''))elog('hls: '+d.details+sfx);
     if(live()&&!started&&d.details!='manifestParsingError'&&(d.fatal||[401,403,404,410].includes(cd))&&nextCand())return;
-    if(bad)dbg('Canal '+((CAND[ci]||'').match(/\.(m3u8|ts)(\?|$)/i)||[,'?'])[1]+': '+d.details+(cd?' (HTTP '+cd+')':''));if(!d.fatal)return;
+    if(bad)dbg('Canal '+((CAND[ci]||'').match(/\.(m3u8|ts)(\?|$)/i)||[,'?'])[1]+': '+d.details+sfx);if(!d.fatal)return;
     if(d.details=='manifestParsingError'){h.destroy();hls=null;/* o endereço .m3u8 devolveu outra coisa (muitas vezes um .ts puro): tenta a outra versão e depois o leitor .ts */
      if(live()&&!started){if(nextCand())return;if(!tsT){tsT=1;tsGo();return}}
      if(live()&&!CNAT)return giveUp(M4);nativ();return}
