@@ -127,6 +127,9 @@ await p.screenshot({ path: OUT + '/8-player.png' });
 await p.keyboard.press('m'); ok(await p.evaluate(() => document.querySelector('#v').muted), 'tecla M silencia');
 await p.keyboard.press('ArrowDown'); ok(await p.evaluate(() => document.querySelector('#v').volume) < 1 || true, 'seta para baixo ajusta volume');
 ok(await p.evaluate(() => document.documentElement.classList.contains('pl')), 'player aberto marca a página (esconde a lista por baixo)');
+await p.keyboard.press('i'); await p.waitForTimeout(300);
+ok(await p.isVisible('#sheet') && (await p.textContent('#ifx')).includes('Leitor:') && (await p.textContent('#ifx')).includes('Este PC toca'), 'tecla I mostra as informações do canal (leitor, formato, suporte)');
+await p.keyboard.press('Escape'); await p.waitForTimeout(150);
 // erro 4 (formato não suportado): para de rodar a bolinha e explica o motivo, sem entrar em loop
 await p.evaluate(() => { CAND = [CAND[ci] || CAND[0]]; ci = 0; hls = null; mp = null; Object.defineProperty(V, 'error', { value: { code: 4, message: 'DEMUXER_ERROR' }, configurable: true }); V.onerror(); });
 await p.waitForTimeout(200);

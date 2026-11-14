@@ -304,6 +304,7 @@ $('#cfg').onclick=()=>{const e=expAt(),d=e?daysTo(e):0,
   +T('a14','ipalette','Cor de destaque',ACN[ACC()])
   +T('a15','iscreen','Modo leve (PC fraco)',liteOn()?'Ligado':'Desligado')
   +T('a16','iscreen','Leitor .ts acelerado (teste)',LS.asc_w=='1'?'Ligado':'Desligado')
+  +(ADW&&ADW.setHwdec?T('a17','iscreen','Decodificação por hardware',LS.asc_nohw=='1'?'Desligada':'Automática'):'')
   +T('a5','ifolder','Canal do cliente',null)
   +T('a10','iscreen','Bloquear capturas',LS.asc_sc=='1'?'Ativado':'Desativado')
   +'</div>');
@@ -318,6 +319,7 @@ $('#cfg').onclick=()=>{const e=expAt(),d=e?daysTo(e):0,
  $('#a14').onclick=accSheet;
  $('#a15').onclick=()=>{LS.asc_lite=liteOn()?'0':'1';liteApply();$('#sheet').hidden=true;toast(liteOn()?'Modo leve ligado: menos animações e efeitos.':'Modo leve desligado.',1)};
  $('#a16').onclick=()=>{LS.asc_w=LS.asc_w=='1'?'0':'1';$('#sheet').hidden=true;toast(LS.asc_w=='1'?'Leitor .ts acelerado ligado (vale no próximo canal). Se der problema, desligue aqui.':'Leitor .ts acelerado desligado.',1)};
+ if($('#a17'))arm('#a17',()=>{LS.asc_nohw=LS.asc_nohw=='1'?'0':'1';ADW.setHwdec(LS.asc_nohw!='1')}); /* reinicia o app para valer */
  $('#a5').onclick=pickCC;
  $('#a10').onclick=()=>{LS.asc_sc=LS.asc_sc=='1'?'0':'1';lastSc='';syncScr();$('#sheet').hidden=true;toast(LS.asc_sc=='1'?'Capturas bloqueadas nas telas de login e listas.':'Capturas liberadas.',1)}};
 
@@ -350,11 +352,13 @@ const ADW=window.ascDesk,hasWfs=!!(ADW&&ADW.setFullscreen);let wfs=false;
 const fs=h=>{try{if(h){const e=document.documentElement;e.requestFullscreen&&e.requestFullscreen().catch(()=>{})}else if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch{}};
 const bars=h=>{if(!IM){try{if(CP.StatusBar)h?CP.StatusBar.hide():CP.StatusBar.show()}catch{}return fs(h)}try{Promise.resolve(IM.set({on:h})).catch(()=>{})}catch{}};
 /* ---------- Player ---------- */
-let hls,cur,zap=[],ht,dr=0,lt=0,tsT=0,de=0,okS=0,dead=0,sw=0,rcAt=0;const P=$('#player'),sk=$('#sk');
+let hls,cur,zap=[],ht,dr=0,lt=0,tsT=0,de=0,okS=0,dead=0,sw=0,rcAt=0,MI=null,BC=null;const P=$('#player'),sk=$('#sk');
 const fmt=t=>{if(!isFinite(t))return'0:00';t=Math.floor(t);const h=Math.floor(t/3600),m=Math.floor(t%3600/60),q=String(t%60).padStart(2,'0');return h?`${h}:${String(m).padStart(2,'0')}:${q}`:`${m}:${q}`};
 const ic=(id,n)=>$(id).querySelector('use').setAttribute('href','#'+n);
 const live=()=>cur&&cur.t=='tv',spin=on=>$('#sp').hidden=!(on&&!dead);
-let dgT=0;const dbg=m=>{if(Date.now()-dgT<2500)return;dgT=Date.now();toast(m)};
+/* Últimos avisos de erro (aparecem em "Informações do canal") */
+const ELOG=[],elog=m=>{ELOG.push(new Date().toLocaleTimeString('pt-BR')+'  '+m);if(ELOG.length>10)ELOG.shift()};
+let dgT=0;const dbg=m=>{elog(m);if(Date.now()-dgT<2500)return;dgT=Date.now();toast(m)};
 function ui(){P.classList.remove('h');clearTimeout(ht);ht=setTimeout(()=>!V.paused&&!dr&&P.classList.add('h'),3500)}
 function epgBar(){const E=$('#epg'),lv=live(),x=lv?epgOf(cur):null;$('#pe').textContent=cur.g||'';E.hidden=!lv;if(!lv)return;
  E.innerHTML=x?`<div class="n">Agora: ${esc(x.p.t)} <span style="font-weight:400">• ${hm(x.p.s)}–${hm(x.p.e)}</span></div><div class="bar"><i style="width:${Math.min(100,Math.max(0,(Date.now()-x.p.s)/(x.p.e-x.p.s)*100))}%"></i></div>`+(x.nx?`<div class="x">A seguir: ${esc(x.nx.t)} • ${hm(x.nx.s)}</div>`:''):'<div class="x">Programação indisponível</div>'}
@@ -392,7 +396,7 @@ const M4='Este canal usa um formato que o app não consegue reproduzir neste com
  MO='Não consegui abrir este canal. O servidor não respondeu ou o formato não é compatível.',
  CNAT=!!V.canPlayType('application/vnd.apple.mpegurl'); /* o Chromium do PC normalmente não toca HLS sozinho: só o hls.js toca */
 /* Para de tentar e avisa o motivo (antes ficava rodando a bolinha para sempre) */
-function giveUp(m){dead=1;wdOff();gen++;if(hls){try{hls.destroy()}catch{}hls=null}mpOff();try{V.pause()}catch{}spin(false);UP=true;$('#pe').textContent=m;toast(m);ui()}
+function giveUp(m){elog(m);dead=1;wdOff();gen++;if(hls){try{hls.destroy()}catch{}hls=null}mpOff();try{V.pause()}catch{}spin(false);UP=true;$('#pe').textContent=m;toast(m);ui()}
 /* Erro de decodificação (código 3). Escada de tentativas, sem loop:
    hls.js: 1ª recupera · 2ª troca o codec de áudio · depois troca para a outra versão do canal (.ts ↔ .m3u8) · depois avisa.
    mpegts.js: 1ª reinicia o leitor · depois troca para a outra versão do canal · depois avisa.
@@ -413,7 +417,7 @@ function src(u,at,fresh,forceNat){const g=++gen;if(live())u=CAND[ci]||u;UP=false
  /* Fluxo MPEG-TS puro: o Chromium não toca .ts sozinho, então usamos o leitor mpegts.js */
  const tsGo=()=>{viaNat=true;ML().then(()=>{if(g!=gen)return;
    if(window.mpegts&&mpegts.isSupported()){const p=mp=mpegts.createPlayer({type:'mpegts',isLive:true,url:/^https?:\/\//i.test(u)&&nat()?location.origin+PX(u):u},{enableWorker:LS.asc_w=='1',enableStashBuffer:true,stashInitialSize:128,liveBufferLatencyChasing:false,autoCleanupSourceBuffer:true,autoCleanupMaxBackwardDuration:30,autoCleanupMinBackwardDuration:12});
-    p.attachMediaElement(V);p.on(mpegts.Events.ERROR,(t,d,i)=>{if(p!=mp)return;const cd=t=='NetworkError'&&i&&i.code;if(!started&&[401,403,404,410].includes(cd)&&nextCand())return;
+    p.attachMediaElement(V);p.on(mpegts.Events.MEDIA_INFO,i=>{if(p==mp)MI=i});p.on(mpegts.Events.ERROR,(t,d,i)=>{if(p!=mp)return;const cd=t=='NetworkError'&&i&&i.code;if(!started&&[401,403,404,410].includes(cd)&&nextCand())return;
      if(V.error)return; /* o vídeo já está em erro: quem trata é o aviso do vídeo (evita reiniciar duas vezes) */
      dbg('Canal .ts: '+d+(cd?' (HTTP '+cd+')':'')+(i&&i.msg?' '+String(i.msg).slice(0,70):''));
      if(!started&&d=='FormatUnsupported'){giveUp(M4);return}
@@ -427,6 +431,7 @@ function src(u,at,fresh,forceNat){const g=++gen;if(live())u=CAND[ci]||u;UP=false
    hlsLv=live();let LD={};try{if(nat())LD={loader:pld()}}catch{}
    const h=hls=new Hls(Object.assign(HC(hlsLv,hlsLv&&!started&&CAND.length>1),LD,at>0?{startPosition:at}:{}));h.loadSource(u);h.attachMedia(V);
     h.on(Hls.Events.MANIFEST_PARSED,()=>{qualityApply(h);V.play().catch(()=>{})});
+   h.on(Hls.Events.BUFFER_CODECS,(_,d)=>{if(h==hls)BC=d});
    h.on(Hls.Events.ERROR,(_,d)=>{if(h!=hls)return;const cd=d.response&&d.response.code,bad=d.fatal||d.details=='manifestLoadError'||d.details=='manifestLoadTimeOut';
     if(live()&&!started&&d.details!='manifestParsingError'&&(d.fatal||[401,403,404,410].includes(cd))&&nextCand())return;
     if(bad)dbg('Canal '+((CAND[ci]||'').match(/\.(m3u8|ts)(\?|$)/i)||[,'?'])[1]+': '+d.details+(cd?' (HTTP '+cd+')':''));if(!d.fatal)return;
@@ -457,7 +462,7 @@ function recover(){if(P.hidden||!cur)return;const nw=Date.now();if(nw-rcAt<1000)
  if(hls&&n%3){if(n%3==1)hls.startLoad(-1);else hls.recoverMediaError();V.play().catch(()=>{});return}
  src(cur.u,live()?0:V.currentTime,1,viaNat&&live())}
 addEventListener('online',()=>{if(!P.hidden&&cur){rc=0;recover()}});
-function play(it,list,from){V.preload='auto';cur=it;CAND=it.t=='tv'?cands(it.u):[it.u];ci=0;tsT=0;de=0;okS=0;dead=0;sw=0;zap=list&&list.length?list:[it];ori('landscape');bars(true);if(P.hidden)history.pushState({p:1},'');P.hidden=false;$('#quality').hidden=true;const tv=live();
+function play(it,list,from){V.preload='auto';cur=it;CAND=it.t=='tv'?cands(it.u):[it.u];ci=0;tsT=0;de=0;okS=0;dead=0;sw=0;MI=null;BC=null;zap=list&&list.length?list:[it];ori('landscape');bars(true);if(P.hidden)history.pushState({p:1},'');P.hidden=false;$('#quality').hidden=true;const tv=live();
  $('#pt').textContent=it.n;ic('#pv',tv?'sprev':'rw10');ic('#nx',tv?'snext':'fw10');ic('#pp','pause');$('#lv').hidden=!tv;UP=false;$('#sk').hidden=tv;$('#tm').hidden=tv;
  $('#pr').style.width=$('#bf').style.width='0';$('#th').style.left='0';$('#t1').textContent=$('#t2').textContent='0:00';
  $('#pf').classList.toggle('on',S.fav.includes(favK(it)));spin(true);src(it.u);wdOn();epgBar();ui();
@@ -501,6 +506,27 @@ const fsUi=()=>{ic('#fs',isFs()?'ifsx':'ifs');document.documentElement.classList
 document.addEventListener('fullscreenchange',fsUi);if(hasWfs)ADW.onFullscreen(v=>{wfs=!!v;fsUi()});
 /* a classe 'pl' (player aberto) é colocada pelo JS: mais leve que o seletor :has() no CSS */
 new MutationObserver(()=>document.documentElement.classList.toggle('pl',!P.hidden)).observe(P,{attributes:true,attributeFilter:['hidden']});
+/* Informações do canal: tela para descobrir por que um canal não toca (formato, leitor, placa de vídeo, últimos erros) */
+async function infoSheet(){if(!cur)return;ui();
+ const q=V.getVideoPlaybackQuality?V.getVideoPlaybackQuality():{},M=window.MediaSource,sup=t=>M&&M.isTypeSupported&&M.isTypeSupported(t)?'sim':'não',
+  rd=hls?'hls.js (.m3u8)':mp?'mpegts.js (.ts'+(LS.asc_w=='1'?', em segundo plano':'')+')':'direto no vídeo do navegador';
+ let vc=(MI&&MI.videoCodec)||'?',ac=(MI&&MI.audioCodec)||'?';
+ if(BC){vc=(BC.video&&(BC.video.levelCodec||BC.video.codec))||vc;ac=(BC.audio&&(BC.audio.levelCodec||BC.audio.codec))||ac}
+ let gpu='';const mk=()=>[
+  'Canal: '+cur.n,'Leitor: '+rd,
+  'Endereço: '+((CAND[ci]||cur.u).match(/\.(m3u8|ts)(\?|$)/i)||[,'direto'])[1],
+  'Vídeo: '+vc+(MI&&MI.profile?' · perfil '+MI.profile+(MI.level?' nível '+MI.level:''):'')+(MI&&MI.chromaFormat?' · '+MI.chromaFormat:''),
+  'Áudio: '+ac,
+  'Imagem: '+(V.videoWidth||'?')+'x'+(V.videoHeight||'?')+(MI&&MI.fps?' · '+(+MI.fps).toFixed(1)+' fps':''),
+  'Quadros: '+(q.totalVideoFrames||0)+' · perdidos '+(q.droppedVideoFrames||0)+' · corrompidos '+(q.corruptedVideoFrames||0),
+  'Este PC toca: H.264 '+sup('video/mp4; codecs="avc1.64001f"')+' · H.265 '+sup('video/mp4; codecs="hvc1.1.6.L93.B0"')+' · AC3 '+sup('audio/mp4; codecs="ac-3"')+' · EAC3 '+sup('audio/mp4; codecs="ec-3"'),
+  gpu,'','Últimos avisos:',...(ELOG.length?ELOG:['(nenhum)'])].filter(x=>x!=='').join('\n');
+ let text=mk();
+ sh('<b>Informações do canal</b><pre class="sy" id="ifx" style="max-height:52vh;white-space:pre-wrap;font:inherit;font-size:.85em">'+esc(text)+'</pre><button class="btn p" id="ifc">Copiar</button><button class="btn" id="ifz">Fechar</button>');
+ $('#ifc').onclick=async()=>{try{await navigator.clipboard.writeText(text);toast('Copiado.',1)}catch{toast('Não consegui copiar. Selecione o texto e use Ctrl+C.')}};
+ $('#ifz').onclick=()=>{$('#sheet').hidden=true};
+ if(ADW&&ADW.gpuInfo){try{const g=await ADW.gpuInfo();gpu='Decodificação de vídeo: '+g.video_decode+(g.nohw?' (hardware desligado nos Ajustes)':'')+'\nPlaca de vídeo: '+(g.gl||'?')+'\nChromium '+g.chrome+' · Electron '+g.electron;text=mk();const pre=$('#ifx');if(pre)pre.textContent=text}catch{}}}
+$('#inf').onclick=infoSheet;
 $('#pip').onclick=async()=>{try{document.pictureInPictureElement?await document.exitPictureInPicture():await V.requestPictureInPicture()}catch{toast('Imagem sobre imagem indisponível para este vídeo.',1)}};
 V.onclick=()=>{clearTimeout(ck);ck=setTimeout(tog,230)};V.ondblclick=()=>{clearTimeout(ck);togFs()};let ck;
 P.addEventListener('pointermove',e=>{if(e.pointerType=='mouse')ui()});
@@ -523,6 +549,7 @@ addEventListener('keydown',e=>{const k=e.key;
   if(k=='f'||k=='F'||k=='F11'){e.preventDefault();return togFs()}
   if(k=='m'||k=='M'){e.preventDefault();V.muted=!V.muted;return}
   if(k=='p'||k=='P'){$('#pip').click();return}
+  if(k=='i'||k=='I'){e.preventDefault();return infoSheet()}
   if(k=='ArrowUp'||k=='ArrowDown'){e.preventDefault();return setVol(k=='ArrowUp'?.05:-.05)}
   if(k=='ArrowLeft'||k=='ArrowRight'){e.preventDefault();if(!live())step(k=='ArrowRight'?1:-1);return}
   if(k==' '||k=='MediaPlayPause'){e.preventDefault();return tog()}

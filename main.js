@@ -16,8 +16,11 @@ protocol.registerSchemesAsPrivileged([
 
 /* Menos travadas em PC fraco: o Windows deixa de "adivinhar" janelas cobertas e pausar o desenho do vídeo */
 app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
-/* canais em H.265/HEVC: libera a decodificação pelo hardware do PC quando ele tiver suporte */
-app.commandLine.appendSwitch('enable-features', 'PlatformHEVCDecoderSupport');
+/* Opções que precisam valer antes do app abrir (Ajustes > Decodificação por hardware) */
+function flagsFile() { return path.join(app.getPath('userData'), 'flags.json'); }
+function loadFlags() { try { return JSON.parse(fs.readFileSync(flagsFile(), 'utf8')) || {}; } catch { return {}; } }
+const FLAGS = loadFlags();
+if (FLAGS.nohw) app.commandLine.appendSwitch('disable-accelerated-video-decode'); /* vídeo decodificado só pelo processador */
 
 if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }
 app.setAppUserModelId('com.ascdesk.app');
@@ -136,6 +139,23 @@ handle('sec:unwrap', ({ data }) => {
 });
 /* Tela cheia da janela inteira (mais estável que a tela cheia de elemento HTML numa janela sem moldura) */
 handle('win:fs', (on) => { if (win && !win.isDestroyed()) win.setFullScreen(!!on); });
+/* Informações para diagnóstico (decodificação de vídeo e placa de vídeo) */
+handle('app:gpu', async () => {
+  const st = app.getGPUFeatureStatus();
+  let gl = '';
+  try {
+    const i = await Promise.race([app.getGPUInfo('complete'), new Promise((r) => setTimeout(() => r(null), 4000))]);
+    gl = (i && i.auxAttributes && i.auxAttributes.glRenderer) || '';
+  } catch { /* sem info */ }
+  return { video_decode: st.video_decode, gpu_compositing: st.gpu_compositing, gl, nohw: !!FLAGS.nohw, chrome: process.versions.chrome, electron: process.versions.electron };
+});
+handle('app:hwdec', (on) => {
+  const f = loadFlags();
+  if (on) delete f.nohw; else f.nohw = true;
+  fs.writeFileSync(flagsFile(), JSON.stringify(f));
+  app.relaunch();
+  app.exit(0);
+});
 handle('sec:screen', ({ secure }) => { if (win) win.setContentProtection(!!secure); });
 
 /* Avisos de vencimento (funcionam enquanto o app estiver aberto) */
