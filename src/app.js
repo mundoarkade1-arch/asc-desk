@@ -9,7 +9,7 @@ const kv=async(m,k,v)=>{const d=await db();return new Promise((res,rej)=>{const 
 const PX=u=>{try{return nat()&&/^https?:\/\//i.test(u)?'/__p?u='+encodeURIComponent(u):u}catch{return u}};
 /* Capas e logos passam pelo serviço de imagens do app: chegam reduzidas e ficam em cache no disco */
 const PI=(u,w)=>{try{return nat()&&/^https?:\/\//i.test(u)?'/__i?u='+encodeURIComponent(u)+'&w='+w:u}catch{return u}};
-const tf=(u,ms=20000)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);return fetch(PX(u),{signal:c.signal,credentials:'omit',referrerPolicy:'no-referrer'}).finally(()=>clearTimeout(t))};
+const tf=(u,ms=20000,ext)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);if(ext)ext.addEventListener('abort',()=>c.abort(),{once:true});return fetch(PX(u),{signal:c.signal,credentials:'omit',referrerPolicy:'no-referrer'}).finally(()=>clearTimeout(t))};
 const okU=u=>{try{return /^https?:$/.test(new URL(u).protocol)}catch{return false}};
 const sl=u=>/^https?:\/\//i.test(u)?u:'';
 /* Tamanho maximo de lista (caracteres/bytes). 250 MB cobre listas enormes (centenas de milhares de itens) e fica abaixo do limite de texto do WebView de 32 bits (~268 milhoes de caracteres). */
@@ -90,13 +90,19 @@ async function parse(t){const out=[],tvg=(t.slice(0,2000).match(/(?:url-tvg|x-tv
  return{out,tvg}}
 /* Lista já processada: guardada (criptografada) para o app abrir sem baixar/ler/processar tudo de novo.
    Troque PV se mudar a forma de processar a lista (kind, adItem, nz...) para o cache antigo ser ignorado. */
-const PV=1;
-async function fastList(id){try{const b=await kv('get','pi:'+id);if(!b)return false;const t=await cDec(b);if(!t)return false;const j=JSON.parse(t);
- if(!j||j.v!=PV||!Array.isArray(j.o)||!j.o.length)return false;CL().tvg=j.t||'';finish(j.o);return true}catch{return false}}
-function putParsed(id,out,tvg){if(out.length>3e5)return;setTimeout(function w(){if(!P.hidden){setTimeout(w,15000);return}
- (async()=>{try{if(CL().id!=id)return;await kv('put','pi:'+id,await cEnc(JSON.stringify({v:PV,t:tvg||'',o:out})))}catch{}})()},5000)}
+const PV=2,PN=4000;
+/* Em pedaços de 4000 itens, com pausa entre eles: nem gravar nem ler a lista congela a tela (PC fraco). */
+async function fastList(id){try{const b=await kv('get','ph:'+id);if(!b)return false;const t=await cDec(b);if(!t)return false;const h=JSON.parse(t);if(!h||h.v!=PV||!h.n||!h.c)return false;
+ const out=[];for(let k=0;k<h.n;k++){const cb=await kv('get','pc:'+id+':'+k),ct=cb&&await cDec(cb);if(!ct)return false;const a=JSON.parse(ct);for(let j=0;j<a.length;j++)out.push(a[j]);await sleep(0)}
+ if(out.length!=h.c)return false;CL().tvg=h.t||'';finish(out);return true}catch{return false}}
+async function delParsed(id){try{const b=await kv('get','ph:'+id),t=b&&await cDec(b),h=t&&JSON.parse(t);await kv('del','ph:'+id);if(h&&h.n)for(let k=0;k<h.n;k++)await kv('del','pc:'+id+':'+k)}catch{}}
+function putParsed(id,out,tvg){if(out.length>5e5)return;kv('del','pi:'+id).catch(()=>{}); /* formato antigo (um bloco só) */
+ setTimeout(async function w(){if(CL().id!=id)return;if(!P.hidden){setTimeout(w,15000);return}
+  try{await delParsed(id);const n=Math.ceil(out.length/PN);
+   for(let k=0;k<n;k++){if(!P.hidden||CL().id!=id)return;await kv('put','pc:'+id+':'+k,await cEnc(JSON.stringify(out.slice(k*PN,(k+1)*PN))));await sleep(40)}
+   await kv('put','ph:'+id,await cEnc(JSON.stringify({v:PV,t:tvg||'',n,c:out.length})))}catch{}},window.__cacheMs||8000)}
 function finish(out){S.items=out;S.by={tv:[],movie:[],series:[]};for(const i of out)S.by[i.t].push(i);S.hasE=0;S._sg=null;S.cat='Todos';S.tab='home';S.epg={};S.al={};XS=null;show('app');nav();render();
- const e=epgUrl();if(e)setTimeout(()=>loadEPG(e),2000);setTimeout(acct,3000);expSync()}
+ epgBoot();setTimeout(acct,3000);expSync()}
 async function useList(text,meta,cached){
  if(text.length>LMAX){$('#st').textContent='Lista grande demais (máximo de cerca de 250 MB).';return false}
  $('#st').textContent='Processando a lista…';const{out,tvg}=await parse(text);if(!out.length){$('#st').textContent='Nenhum canal encontrado. Confira se é uma lista M3U válida.';return false}
@@ -113,14 +119,22 @@ const nk=s=>nz(s).replace(/\b(fhd|uhd|hd|sd|4k|h265|hevc)\b/g,'').replace(/[^a-z
 /* Guia: link informado > xmltv.php do servidor (login/senha) > url-tvg da lista */
 const xepg=()=>{try{const b=new URL(CL().u||''),u=b.searchParams.get('username'),p=b.searchParams.get('password');if(u&&p)return`${b.origin}/xmltv.php?username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}`}catch{}};
 const epgUrl=()=>CL().epg||xepg()||CL().tvg||'';
-async function loadEPG(url,manual){try{const r=await tf(url,6e4);if(!r.ok)throw 0;
+let epgAbort=null,epgWant=0,epgTmr=0;const EPG_TTL=4*36e5;
+const epgAl=(E,A)=>{const al={};for(const i of S.by.tv)for(const k of[i.n.toLowerCase(),nk(i.n)])if(A[k]&&E[A[k]])al[k]=A[k];return al};
+async function epgPut(){try{await kv('put','epg:'+CL().id,await cEnc(JSON.stringify({t:Date.now(),E:S.epg,al:S.al})))}catch{}}
+async function epgGet(id){try{const b=await kv('get','epg:'+id),t=b&&await cDec(b);if(!t)return null;const j=JSON.parse(t);return j&&j.E&&Date.now()-j.t<EPG_TTL?j:null}catch{return null}}
+/* Guia de programação: usa o que ficou guardado (até 4 h). Sem isso, baixa quando o app está sossegado — nunca junto com um canal abrindo. */
+function epgBoot(){const e=epgUrl();epgWant=0;if(!e)return;epgWant=1;const id=CL().id;
+ epgGet(id).then(c=>{if(c&&CL().id==id){S.epg=c.E;S.al=c.al||{};S.hasE=Object.keys(c.E).length?1:0;epgWant=0;fillNow();return}epgSoon(window.__epgMs||20000)})}
+function epgSoon(ms){if(!epgWant||epgTmr)return;epgTmr=setTimeout(()=>{epgTmr=0;if(!epgWant)return;if(!P.hidden||document.hidden)return epgSoon(10000);const u=epgUrl();u?loadEPG(u):epgWant=0},ms)}
+async function loadEPG(url,manual){const ab=epgAbort=new AbortController();try{const r=await tf(url,6e4,ab.signal);if(!r.ok)throw 0;
   /* Lê o guia aos pedaços (sem carregar o arquivo inteiro na memória) e guarda só os canais que existem na sua lista */
   let body=r.body;if(/\.gz(\?|$)/i.test(url)&&window.DecompressionStream)body=body.pipeThrough(new DecompressionStream('gzip'));
   const rd=body.pipeThrough(new TextDecoderStream()).getReader();
   const now=Date.now(),lim=now+12*36e5,E={},A={};let buf='',W=null,yT=performance.now();
   const want=()=>W||(W=(()=>{const w=new Set();for(const i of S.by.tv){const id=(i.id||'').toLowerCase();if(id)w.add(id);const a=A[i.n.toLowerCase()]||A[nk(i.n)];if(a)w.add(a)}return w})());
   const RX=/<channel\s+id="([^"]+)"[^>]*>([\s\S]*?)<\/channel>|<programme\s([^>]*)>([\s\S]*?)<\/programme>/g;
-  for(;;){const{done,value}=await rd.read();if(value)buf+=value;
+  for(;;){const{done,value}=await rd.read();if(ab.signal.aborted){try{rd.cancel()}catch{}return}if(value)buf+=value;
    RX.lastIndex=0;let m,end=0,nn=0;
    while((m=RX.exec(buf))){end=RX.lastIndex;
     if(m[1]!=null){const id=dec(m[1]).toLowerCase();A[id]=id;
@@ -132,9 +146,9 @@ async function loadEPG(url,manual){try{const r=await tf(url,6e4);if(!r.ok)throw 
     if(++nn%100==0&&performance.now()-yT>10){await sleep(0);yT=performance.now()}}
    buf=buf.slice(end);if(done)break;await sleep(0)}
   for(const k in E)E[k].sort((a,b)=>a.s-b.s);
-  S.epg=E;S.al=A;S.hasE=Object.keys(E).length?1:0;fillNow();if(!P.hidden&&cur&&live())epgBar();
+  S.epg=E;S.al=epgAl(E,A);S.hasE=Object.keys(E).length?1:0;epgWant=0;epgPut();fillNow();if(!P.hidden&&cur&&live())epgBar();
   if(manual)toast(Object.keys(E).length?'Guia atualizado':'O guia veio vazio ou fora do horário.',1)}
- catch{if(manual)toast('Não foi possível carregar o guia de programação (bloqueio do servidor ou link inválido).')}}
+catch{if(manual&&!ab.signal.aborted)toast('Não foi possível carregar o guia de programação (bloqueio do servidor ou link inválido).')}}
 function epgOf(it){const l=S.epg[(it.id||'').toLowerCase()]||S.epg[S.al[it.n.toLowerCase()]]||S.epg[S.al[nk(it.n)]];if(!l)return null;const n=Date.now();
  const i=l.findIndex(p=>p.s<=n&&n<p.e);return i<0?null:{p:l[i],nx:l[i+1]}}
 const hm=t=>new Date(t).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -339,7 +353,7 @@ function listOpts(id){const x=LST.l.find(y=>y.id==id);if(!x)return;SS=1;
   else if(b.id=='o3'){if(b.dataset.c)delList(id);else{b.dataset.c=1;b.textContent='Toque de novo para excluir'}}
   else if(b.id=='o5')lists()}}
 async function useSaved(id){LST.act=id;await saveL();if(await fastList(id))return;const t=await plGet(id);if(t)await useList(t,null,1);else{S.items=[];show('add');toast('Essa lista está sem dados. Adicione de novo.')}}
-async function delList(id){const was=LST.act==id;LST.l=LST.l.filter(y=>y.id!=id);kv('del','pl:'+id).catch(()=>{});kv('del','pi:'+id).catch(()=>{});if(was)LST.act=LST.l[0]?LST.l[0].id:'';await saveL();
+async function delList(id){const was=LST.act==id;LST.l=LST.l.filter(y=>y.id!=id);kv('del','pl:'+id).catch(()=>{});kv('del','pi:'+id).catch(()=>{});kv('del','epg:'+id).catch(()=>{});delParsed(id);if(was)LST.act=LST.l[0]?LST.l[0].id:'';await saveL();
  if(!was)return lists();$('#sheet').hidden=true;if(LST.act)useSaved(LST.act);else{S.items=[];S._sg=null;show('add')}}
 
 /* ---------- Orientação / tela cheia ---------- */
@@ -454,7 +468,7 @@ function tick(){if(P.hidden||!cur)return;if(UP&&V.paused)return;
  stuck++;if(stuck>=2)spin(true);
  for(let i=0;i<V.buffered.length;i++){const s=V.buffered.start(i);if(s>t&&s-t<3){try{V.currentTime=s+.05}catch{}break}}
  if(live()&&!started&&stuck==15)toast('Este canal está demorando para abrir…');
- if(stuck>=(started?(live()?10:25):(live()?10:20)))recover()}
+ if(stuck>=(started?(live()?10:25):(live()?8:20)))recover()}
 function recover(){if(P.hidden||!cur)return;const nw=Date.now();if(nw-rcAt<1000)return;rcAt=nw;stuck=0;const n=++rc;
  if(live()&&!started){if(n>=5)return giveUp(MO);spin(true);if(CAND.length>1)ci=(ci+1)%CAND.length;src(cur.u,0,1,CNAT&&!viaNat);return}
  if(!live()&&n>6){wdOff();gen++;if(hls){hls.destroy();hls=null}spin(false);toast('Não foi possível reproduzir. O servidor pode estar fora do ar ou o formato não é compatível.');return}
@@ -462,7 +476,7 @@ function recover(){if(P.hidden||!cur)return;const nw=Date.now();if(nw-rcAt<1000)
  if(hls&&n%3){if(n%3==1)hls.startLoad(-1);else hls.recoverMediaError();V.play().catch(()=>{});return}
  src(cur.u,live()?0:V.currentTime,1,viaNat&&live())}
 addEventListener('online',()=>{if(!P.hidden&&cur){rc=0;recover()}});
-function play(it,list,from){V.preload='auto';cur=it;CAND=it.t=='tv'?cands(it.u):[it.u];ci=0;tsT=0;de=0;okS=0;dead=0;sw=0;MI=null;BC=null;zap=list&&list.length?list:[it];ori('landscape');bars(true);if(P.hidden)history.pushState({p:1},'');P.hidden=false;$('#quality').hidden=true;const tv=live();
+function play(it,list,from){if(epgAbort){try{epgAbort.abort()}catch{}epgAbort=null}V.preload='auto';cur=it;CAND=it.t=='tv'?cands(it.u):[it.u];ci=0;tsT=0;de=0;okS=0;dead=0;sw=0;MI=null;BC=null;zap=list&&list.length?list:[it];ori('landscape');bars(true);if(P.hidden)history.pushState({p:1},'');P.hidden=false;$('#quality').hidden=true;const tv=live();
  $('#pt').textContent=it.n;ic('#pv',tv?'sprev':'rw10');ic('#nx',tv?'snext':'fw10');ic('#pp','pause');$('#lv').hidden=!tv;UP=false;$('#sk').hidden=tv;$('#tm').hidden=tv;
  $('#pr').style.width=$('#bf').style.width='0';$('#th').style.left='0';$('#t1').textContent=$('#t2').textContent='0:00';
  $('#pf').classList.toggle('on',S.fav.includes(favK(it)));spin(true);src(it.u);wdOn();epgBar();ui();
@@ -491,7 +505,7 @@ const seekTo=e=>{const r=sk.getBoundingClientRect(),f=Math.max(0,Math.min(1,(e.c
 sk.onpointerdown=e=>{dr=1;sk.setPointerCapture(e.pointerId);seekTo(e);ui()};
 sk.onpointermove=e=>{if(dr){seekTo(e);ui()}};
 sk.onpointerup=e=>{if(dr){const f=seekTo(e);dr=0;if(V.duration)V.currentTime=f*V.duration;ui()}};
-const close=pop=>{if(hasWfs&&wfs)ADW.setFullscreen(false);saveP();wdOff();gen++;ori(S.dev=='tv'?'landscape':'portrait');bars(false);if(hls){hls.destroy();hls=null}mpOff();UP=true;V.pause();V.removeAttribute('src');V.load();P.hidden=true;spin(false);if(S.tab=='fav'||S.tab=='home')render();if(pop!==1&&history.state&&history.state.p)history.back()};
+const close=pop=>{epgSoon(8000);if(hasWfs&&wfs)ADW.setFullscreen(false);saveP();wdOff();gen++;ori(S.dev=='tv'?'landscape':'portrait');bars(false);if(hls){hls.destroy();hls=null}mpOff();UP=true;V.pause();V.removeAttribute('src');V.load();P.hidden=true;spin(false);if(S.tab=='fav'||S.tab=='home')render();if(pop!==1&&history.state&&history.state.p)history.back()};
 $('#bk').onclick=()=>close();
 const vol=$('#vol'),isFs=()=>hasWfs?wfs:document.fullscreenElement===P;
 $('#quality').onclick=qualityMenu;
@@ -505,7 +519,7 @@ $('#fs').onclick=togFs;
 const fsUi=()=>{ic('#fs',isFs()?'ifsx':'ifs');document.documentElement.classList.toggle('fsw',isFs())};
 document.addEventListener('fullscreenchange',fsUi);if(hasWfs)ADW.onFullscreen(v=>{wfs=!!v;fsUi()});
 /* a classe 'pl' (player aberto) é colocada pelo JS: mais leve que o seletor :has() no CSS */
-new MutationObserver(()=>document.documentElement.classList.toggle('pl',!P.hidden)).observe(P,{attributes:true,attributeFilter:['hidden']});
+new MutationObserver(()=>{document.documentElement.classList.toggle('pl',!P.hidden);try{ADW&&ADW.playing&&ADW.playing(!P.hidden)}catch{}}).observe(P,{attributes:true,attributeFilter:['hidden']});
 /* Informações do canal: tela para descobrir por que um canal não toca (formato, leitor, placa de vídeo, últimos erros) */
 async function infoSheet(){if(!cur)return;ui();
  const q=V.getVideoPlaybackQuality?V.getVideoPlaybackQuality():{},M=window.MediaSource,sup=t=>M&&M.isTypeSupported&&M.isTypeSupported(t)?'sim':'não',

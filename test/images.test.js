@@ -68,6 +68,24 @@ test('pedidos iguais ao mesmo tempo compartilham um unico download', async () =>
   assert.strictEqual(c.n, 1);
 });
 
+test('tocando vídeo (busy) ou imagem enorme: entrega o original sem processar', async () => {
+  let used = 0;
+  const ni = { createFromBuffer: () => { used++; return fakeImg(1200); } };
+  const a = createImageService({ open: fakeOpen({ n: 0 }, { body: Buffer.from('ORIG') }), nativeImage: ni, dir: tmp(), busy: () => true });
+  assert.strictEqual(Buffer.from(await (await a.handle('http://x/a.jpg', 320)).arrayBuffer()).toString(), 'ORIG');
+  const b = createImageService({ open: fakeOpen({ n: 0 }, { body: Buffer.alloc(5000, 1) }), nativeImage: ni, dir: tmp(), cpuMax: 1000 });
+  assert.strictEqual((await b.handle('http://x/b.jpg', 320)).status, 200);
+  assert.strictEqual(used, 0);
+});
+
+test('processa uma imagem por vez', async () => {
+  let now = 0, max = 0;
+  const ni = { createFromBuffer: () => { now++; max = Math.max(max, now); const r = fakeImg(1200); const rs = r.resize; r.resize = (o) => { now--; return rs(o); }; return r; } };
+  const s = createImageService({ open: fakeOpen({ n: 0 }), nativeImage: ni, dir: tmp() });
+  await Promise.all([1, 2, 3, 4, 5].map((i) => s.handle('http://x/' + i + '.jpg', 320)));
+  assert.strictEqual(max, 1);
+});
+
 test('limpeza apaga as imagens mais antigas quando passa do limite', async () => {
   const dir = tmp();
   const s = createImageService({ open: fakeOpen({ n: 0 }), nativeImage: nativeImage(10), dir, cacheMax: 1000 });

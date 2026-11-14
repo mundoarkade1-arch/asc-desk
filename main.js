@@ -61,6 +61,7 @@ function serveFile(urlPath) {
     return new Response('not found', { status: 404 });
   }
 }
+let playing = false; /* a interface avisa quando um vídeo está aberto */
 let images = null; /* criado quando o app abre (precisa da pasta de dados do usuário) */
 async function handleProtocol(request) {
   const u = new URL(request.url);
@@ -156,6 +157,7 @@ handle('app:hwdec', (on) => {
   app.relaunch();
   app.exit(0);
 });
+handle('app:playing', (on) => { playing = !!on; });
 handle('sec:screen', ({ secure }) => { if (win) win.setContentProtection(!!secure); });
 
 /* Avisos de vencimento (funcionam enquanto o app estiver aberto) */
@@ -208,7 +210,7 @@ app.on('window-all-closed', () => app.quit());
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
-  images = createImageService({ open, nativeImage, dir: path.join(app.getPath('userData'), 'imgcache') });
+  images = createImageService({ open, nativeImage, dir: path.join(app.getPath('userData'), 'imgcache'), busy: () => playing });
   protocol.handle(SCHEME, handleProtocol);
   setTimeout(() => images.prune(), 20000); /* limpeza do cache de imagens, sem atrasar a abertura */
   const ses = session.defaultSession;

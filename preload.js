@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('ascDesk', {
   checkUpdate: () => call('upd:check'),
   downloadUpdate: () => call('upd:download'),
   installUpdate: () => call('upd:install'),
+  playing: (on) => call('app:playing', !!on),
   gpuInfo: () => call('app:gpu'),
   setHwdec: (on) => call('app:hwdec', !!on),
   setFullscreen: (on) => call('win:fs', !!on),

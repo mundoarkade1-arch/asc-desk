@@ -57,6 +57,7 @@ await new Promise((r) => setTimeout(r, 200));
 const base = `http://127.0.0.1:${app.address().port}`; const ip = iptv.address().port;
 
 const mock = () => {
+  window.__epgMs = 300; window.__cacheMs = 500;
   window.mpegts = { isSupported: () => true, Events: { ERROR: 'error' }, createPlayer: ({ url }) => { window.__tsurl = url; fetch(url).catch(() => {}); return { attachMediaElement() {}, on() {}, load() {}, play() { return Promise.resolve(); }, destroy() {} }; } };
   window.__upd = 'none'; const st = { notif: [] };
   const ls = []; window.__ls = ls;
@@ -164,8 +165,12 @@ await p.keyboard.type('Filme 1'); await p.waitForTimeout(700);
 ok((await p.locator('#grid .card').count()) >= 1, 'busca encontra filmes');
 // lista já processada fica em cache e o app reabre sem processar de novo
 await p.waitForTimeout(6000);
-ok((await p.evaluate(() => new Promise((r) => { const q = indexedDB.open('asc'); q.onsuccess = () => { const k = q.result.transaction('k').objectStore('k').getAllKeys(); k.onsuccess = () => r(k.result); }; }))).some((x) => String(x).startsWith('pi:')), 'lista processada foi guardada em cache');
+ok((await p.evaluate(() => new Promise((r) => { const q = indexedDB.open('asc'); q.onsuccess = () => { const k = q.result.transaction('k').objectStore('k').getAllKeys(); k.onsuccess = () => r(k.result); }; }))).some((x) => String(x).startsWith('ph:')), 'lista processada foi guardada em cache (em pedaços)');
+ok((await p.evaluate(() => new Promise((r) => { const q = indexedDB.open('asc'); q.onsuccess = () => { const k = q.result.transaction('k').objectStore('k').getAllKeys(); k.onsuccess = () => r(k.result); }; }))).some((x) => String(x).startsWith('epg:')), 'guia ficou guardado em cache');
+const nx = hits.filter((h) => h.includes('xmltv')).length;
 await p.reload(); await p.waitForSelector('#app:not([hidden])', { timeout: 8000 });
 ok((await p.locator('.rs').count()) === 5, 'ao reabrir, a lista vem do cache e o início aparece');
+await p.waitForTimeout(1200);
+ok(await p.evaluate(() => S.hasE === 1) && hits.filter((h) => h.includes('xmltv')).length === nx, 'ao reabrir, o guia vem do cache (não baixa de novo)');
 await b.close(); iptv.close(); app.close();
 console.log(errs.length ? '\nERROS:\n' + errs.join('\n') : '\nTUDO OK'); process.exit(errs.length ? 1 : 0);
