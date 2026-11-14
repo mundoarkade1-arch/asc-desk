@@ -16,6 +16,8 @@ protocol.registerSchemesAsPrivileged([
 
 /* Menos travadas em PC fraco: o Windows deixa de "adivinhar" janelas cobertas e pausar o desenho do vídeo */
 app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+/* canais em H.265/HEVC: libera a decodificação pelo hardware do PC quando ele tiver suporte */
+app.commandLine.appendSwitch('enable-features', 'PlatformHEVCDecoderSupport');
 
 if (!app.requestSingleInstanceLock()) { app.quit(); process.exit(0); }
 app.setAppUserModelId('com.ascdesk.app');

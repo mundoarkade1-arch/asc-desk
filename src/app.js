@@ -303,6 +303,7 @@ $('#cfg').onclick=()=>{const e=expAt(),d=e?daysTo(e):0,
   +T('a13','iver','Versão','…')
   +T('a14','ipalette','Cor de destaque',ACN[ACC()])
   +T('a15','iscreen','Modo leve (PC fraco)',liteOn()?'Ligado':'Desligado')
+  +T('a16','iscreen','Leitor .ts acelerado (teste)',LS.asc_w=='1'?'Ligado':'Desligado')
   +T('a5','ifolder','Canal do cliente',null)
   +T('a10','iscreen','Bloquear capturas',LS.asc_sc=='1'?'Ativado':'Desativado')
   +'</div>');
@@ -316,6 +317,7 @@ $('#cfg').onclick=()=>{const e=expAt(),d=e?daysTo(e):0,
  $('#a13').onclick=async()=>{const v=await ver();toast(v?'ASC DESK '+v.name+' (código '+v.code+')':'Versão indisponível.',1)};
  $('#a14').onclick=accSheet;
  $('#a15').onclick=()=>{LS.asc_lite=liteOn()?'0':'1';liteApply();$('#sheet').hidden=true;toast(liteOn()?'Modo leve ligado: menos animações e efeitos.':'Modo leve desligado.',1)};
+ $('#a16').onclick=()=>{LS.asc_w=LS.asc_w=='1'?'0':'1';$('#sheet').hidden=true;toast(LS.asc_w=='1'?'Leitor .ts acelerado ligado (vale no próximo canal). Se der problema, desligue aqui.':'Leitor .ts acelerado desligado.',1)};
  $('#a5').onclick=pickCC;
  $('#a10').onclick=()=>{LS.asc_sc=LS.asc_sc=='1'?'0':'1';lastSc='';syncScr();$('#sheet').hidden=true;toast(LS.asc_sc=='1'?'Capturas bloqueadas nas telas de login e listas.':'Capturas liberadas.',1)}};
 
@@ -348,10 +350,10 @@ const ADW=window.ascDesk,hasWfs=!!(ADW&&ADW.setFullscreen);let wfs=false;
 const fs=h=>{try{if(h){const e=document.documentElement;e.requestFullscreen&&e.requestFullscreen().catch(()=>{})}else if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}catch{}};
 const bars=h=>{if(!IM){try{if(CP.StatusBar)h?CP.StatusBar.hide():CP.StatusBar.show()}catch{}return fs(h)}try{Promise.resolve(IM.set({on:h})).catch(()=>{})}catch{}};
 /* ---------- Player ---------- */
-let hls,cur,zap=[],ht,dr=0,lt=0;const P=$('#player'),sk=$('#sk');
+let hls,cur,zap=[],ht,dr=0,lt=0,tsT=0,de=0,okS=0,dead=0;const P=$('#player'),sk=$('#sk');
 const fmt=t=>{if(!isFinite(t))return'0:00';t=Math.floor(t);const h=Math.floor(t/3600),m=Math.floor(t%3600/60),q=String(t%60).padStart(2,'0');return h?`${h}:${String(m).padStart(2,'0')}:${q}`:`${m}:${q}`};
 const ic=(id,n)=>$(id).querySelector('use').setAttribute('href','#'+n);
-const live=()=>cur&&cur.t=='tv',spin=on=>$('#sp').hidden=!on;
+const live=()=>cur&&cur.t=='tv',spin=on=>$('#sp').hidden=!(on&&!dead);
 let dgT=0;const dbg=m=>{if(Date.now()-dgT<2500)return;dgT=Date.now();toast(m)};
 function ui(){P.classList.remove('h');clearTimeout(ht);ht=setTimeout(()=>!V.paused&&!dr&&P.classList.add('h'),3500)}
 function epgBar(){const E=$('#epg'),lv=live(),x=lv?epgOf(cur):null;$('#pe').textContent=cur.g||'';E.hidden=!lv;if(!lv)return;
@@ -367,9 +369,8 @@ const HC=(lv,f)=>({xhrSetup:(x,u)=>{x.open('GET',PX(u),true)},enableWorker:true,
  abrEwmaDefaultEstimate:3e6,abrBandWidthFactor:.8,abrBandWidthUpFactor:.6});
 let PLC;const pld=()=>PLC||(PLC=(()=>{const B=Hls.DefaultConfig.loader;return class extends B{load(c,g,cb){const ok=cb.onSuccess;
   super.load(c,g,Object.assign({},cb,{onSuccess:(r,st,x,n)=>{try{if(r&&n&&n.getResponseHeader){r.url=n.getResponseHeader('X-Final-Url')||c.url}}catch{}return ok(r,st,x,n)}}))}}})());
-let mp=null,MLP,mpW=false;/* mpW: leitor .ts em thread separada (mais leve para a tela). Se falhar antes de tocar 2 vezes seguidas, volta ao modo antigo sozinho */
-const wFail=()=>{if(mpW&&LS.asc_wok!='1'){const n=(+LS.asc_nwc||0)+1;LS.asc_nwc=String(n);if(n>=2)LS.asc_nw='1'}};
-const TSU=/\.ts(\?|$)/i,mpOff=()=>{if(mp){try{mp.destroy()}catch{}mp=null}mpW=false},
+let mp=null,MLP;
+const TSU=/\.ts(\?|$)/i,mpOff=()=>{if(mp){try{mp.destroy()}catch{}mp=null}},
 ML=()=>window.mpegts?Promise.resolve():(MLP=MLP||new Promise(r=>{const s=document.createElement('script');s.src='vendor/mpegts.min.js';s.onload=s.onerror=()=>r();document.head.append(s)}));
 let viaNat=false,hlsLv=false,HLP,gen=0,wd=null,lastT=-1,lastBe=0,stuck=0,rc=0,started=false,UP=false;
 const HL=()=>window.Hls?Promise.resolve():(HLP=HLP||new Promise(r=>{const s=document.createElement('script');s.src='vendor/hls.min.js';s.onload=s.onerror=()=>r();document.head.append(s)}));
@@ -386,16 +387,27 @@ let CAND=[],ci=0;
 const fmK=u=>{try{return new URL(u).host}catch{return''}};
 const cands=u=>{const m=u.match(XL);if(!m)return[u];const b=m[1],q=m[3]||'',a=[b+'.m3u8'+q,b+'.ts'+q],w=jg('asc_fm',{})[fmK(u)]||(m[2]||'').slice(1).toLowerCase();return w=='ts'?a.reverse():a};
 const nextCand=()=>{if(ci+1>=CAND.length)return false;ci++;spin(true);src(cur.u,0,1,false);return true};
+const M4='Este canal usa um formato que o app não consegue reproduzir neste computador (erro 4).',
+ M3='Não foi possível decodificar o vídeo deste canal (erro 3). Ele pode usar H.265/HEVC ou áudio AC3, que este computador não suporta.',
+ MO='Não consegui abrir este canal. O servidor não respondeu ou o formato não é compatível.',
+ CNAT=!!V.canPlayType('application/vnd.apple.mpegurl'); /* o Chromium do PC normalmente não toca HLS sozinho: só o hls.js toca */
+/* Para de tentar e avisa o motivo (antes ficava rodando a bolinha para sempre) */
+function giveUp(m){dead=1;wdOff();gen++;if(hls){try{hls.destroy()}catch{}hls=null}mpOff();try{V.pause()}catch{}spin(false);UP=true;$('#pe').textContent=m;toast(m);ui()}
+/* Erro de decodificação no hls.js: 1ª vez recupera, 2ª troca o codec de áudio, depois tenta a outra versão do canal ou desiste */
+function mediaFix(h){const n=++de;if(n==1){h.recoverMediaError();return}if(n==2){try{h.swapAudioCodec()}catch{}h.recoverMediaError();return}if(live()&&!started&&nextCand())return;giveUp(M3)}
 function src(u,at,fresh,forceNat){const g=++gen;if(live())u=CAND[ci]||u;UP=false;viaNat=!!forceNat;
  const nativ=()=>{viaNat=true;V.src=PX(u);if(at>0)V.addEventListener('loadedmetadata',()=>{try{V.currentTime=at}catch{}},{once:true});V.play().catch(()=>{})};
  if(hls&&!fresh&&!forceNat&&hlsLv&&live()&&!(at>0)){try{hls.stopLoad();hls.loadSource(u);hls.startLoad(-1);return}catch{}}
  if(hls){hls.destroy();hls=null}mpOff();
- /* Canal .ts (fluxo MPEG-TS puro): o Android não toca direto, então usamos o leitor mpegts.js */
- if(live()&&TSU.test(u)){viaNat=true;ML().then(()=>{if(g!=gen)return;
-   if(window.mpegts&&mpegts.isSupported()){const p=mp=mpegts.createPlayer({type:'mpegts',isLive:true,url:/^https?:\/\//i.test(u)&&nat()?location.origin+PX(u):u},{enableWorker:mpW=!LS.asc_nw,enableStashBuffer:true,stashInitialSize:128,liveBufferLatencyChasing:false,autoCleanupSourceBuffer:true,autoCleanupMaxBackwardDuration:30,autoCleanupMinBackwardDuration:12});
-    p.attachMediaElement(V);p.on(mpegts.Events.ERROR,(t,d,i)=>{if(p!=mp)return;const cd=i&&i.code;if(!started)wFail();if(!started&&[401,403,404,410].includes(cd)&&nextCand())return;dbg('Canal .ts: '+d+(cd?' (HTTP '+cd+')':'')+(i&&i.msg?' '+String(i.msg).slice(0,70):''));setTimeout(()=>{if(p==mp&&!P.hidden&&cur)recover()},800)});
+ /* Fluxo MPEG-TS puro: o Chromium não toca .ts sozinho, então usamos o leitor mpegts.js */
+ const tsGo=()=>{viaNat=true;ML().then(()=>{if(g!=gen)return;
+   if(window.mpegts&&mpegts.isSupported()){const p=mp=mpegts.createPlayer({type:'mpegts',isLive:true,url:/^https?:\/\//i.test(u)&&nat()?location.origin+PX(u):u},{enableWorker:LS.asc_w=='1',enableStashBuffer:true,stashInitialSize:128,liveBufferLatencyChasing:false,autoCleanupSourceBuffer:true,autoCleanupMaxBackwardDuration:30,autoCleanupMinBackwardDuration:12});
+    p.attachMediaElement(V);p.on(mpegts.Events.ERROR,(t,d,i)=>{if(p!=mp)return;const cd=i&&i.code;if(!started&&[401,403,404,410].includes(cd)&&nextCand())return;dbg('Canal .ts: '+d+(cd?' (HTTP '+cd+')':'')+(i&&i.msg?' '+String(i.msg).slice(0,70):''));
+     if(!started&&d=='FormatUnsupported'){giveUp(M4);return}
+     setTimeout(()=>{if(p==mp&&!P.hidden&&cur&&!dead)recover()},800)});
     p.load();Promise.resolve(p.play()).catch(()=>{})}
-   else dbg('Este canal só existe em .ts e o leitor não carregou.')});return}
+   else giveUp('Este canal só existe em .ts e o leitor não carregou.')})};
+ if(live()&&TSU.test(u)){tsGo();return}
  HL().then(()=>{if(g!=gen)return;
   if(!window.Hls)dbg('hls.js não carregou');
   if(!forceNat&&window.Hls&&Hls.isSupported()&&!/\.(mp4|mkv|avi|mov)(\?|$)/i.test(u)){
@@ -405,11 +417,13 @@ function src(u,at,fresh,forceNat){const g=++gen;if(live())u=CAND[ci]||u;UP=false
    h.on(Hls.Events.ERROR,(_,d)=>{if(h!=hls)return;const cd=d.response&&d.response.code,bad=d.fatal||d.details=='manifestLoadError'||d.details=='manifestLoadTimeOut';
     if(live()&&!started&&d.details!='manifestParsingError'&&(d.fatal||[401,403,404,410].includes(cd))&&nextCand())return;
     if(bad)dbg('Canal '+((CAND[ci]||'').match(/\.(m3u8|ts)(\?|$)/i)||[,'?'])[1]+': '+d.details+(cd?' (HTTP '+cd+')':''));if(!d.fatal)return;
-    if(d.details=='manifestParsingError'){h.destroy();hls=null;if(live()&&!started&&nextCand())return;nativ();return}
+    if(d.details=='manifestParsingError'){h.destroy();hls=null;/* o endereço .m3u8 devolveu outra coisa (muitas vezes um .ts puro): tenta a outra versão e depois o leitor .ts */
+     if(live()&&!started){if(nextCand())return;if(!tsT){tsT=1;tsGo();return}}
+     if(live()&&!CNAT)return giveUp(M4);nativ();return}
     spin(true);
-    if(d.type=='mediaError')h.recoverMediaError();
+    if(d.type=='mediaError')mediaFix(h);
     else setTimeout(()=>{if(h==hls&&!P.hidden)h.startLoad(-1)},1500)})
-  }else nativ()})}
+  }else if(live()&&!CNAT)giveUp(M4);else nativ()})}
 /* Vigia: se a imagem parar, a bolinha fica girando e o app tenta voltar sozinho (ao vivo: sem desistir) */
 function wdOn(){wdOff();lastT=-1;lastBe=0;stuck=0;rc=0;started=false;wd=setInterval(tick,1000)}
 function wdOff(){clearInterval(wd);wd=null}
@@ -418,19 +432,19 @@ function tick(){if(P.hidden||!cur)return;if(UP&&V.paused)return;
  const t=V.currentTime,adv=Math.abs(t-lastT)>.25;lastT=t;
  if(!live()&&V.buffered.length){const be=V.buffered.end(V.buffered.length-1);if(be>lastBe+.25)stuck=0;lastBe=be}
  if(V.seeking||dr){stuck=0;return}
- if(adv&&V.readyState>=2){started=true;if(mpW&&mp&&LS.asc_wok!='1')LS.asc_wok='1';if(live()&&CAND.length>1){const e=/\.ts(\?|$)/i.test(CAND[ci]||'')?'ts':'m3u8',k=fmK(cur.u),o=jg('asc_fm',{});if(o[k]!=e){o[k]=e;try{LS.asc_fm=JSON.stringify(o)}catch{}}}stuck=0;rc=0;spin(false);return}
+ if(adv&&V.readyState>=2){started=true;if(++okS>15)de=0;if(live()&&CAND.length>1){const e=/\.ts(\?|$)/i.test(CAND[ci]||'')?'ts':'m3u8',k=fmK(cur.u),o=jg('asc_fm',{});if(o[k]!=e){o[k]=e;try{LS.asc_fm=JSON.stringify(o)}catch{}}}stuck=0;rc=0;spin(false);return}
  stuck++;if(stuck>=2)spin(true);
  for(let i=0;i<V.buffered.length;i++){const s=V.buffered.start(i);if(s>t&&s-t<3){try{V.currentTime=s+.05}catch{}break}}
  if(live()&&!started&&stuck==15)toast('Este canal está demorando para abrir…');
- if(stuck>=(started?(live()?10:25):(live()?14:30)))recover()}
+ if(stuck>=(started?(live()?10:25):(live()?10:20)))recover()}
 function recover(){if(P.hidden||!cur)return;stuck=0;const n=++rc;
- if(live()&&!started){wFail();spin(true);if(viaNat&&CAND.length>1)ci=(ci+1)%CAND.length;src(cur.u,0,1,!viaNat);return}
+ if(live()&&!started){if(n>=5)return giveUp(MO);spin(true);if(CAND.length>1)ci=(ci+1)%CAND.length;src(cur.u,0,1,CNAT&&!viaNat);return}
  if(!live()&&n>6){wdOff();gen++;if(hls){hls.destroy();hls=null}spin(false);toast('Não foi possível reproduzir. O servidor pode estar fora do ar ou o formato não é compatível.');return}
  spin(true);
  if(hls&&n%3){if(n%3==1)hls.startLoad(-1);else hls.recoverMediaError();V.play().catch(()=>{});return}
  src(cur.u,live()?0:V.currentTime,1,viaNat&&live())}
 addEventListener('online',()=>{if(!P.hidden&&cur){rc=0;recover()}});
-function play(it,list,from){V.preload='auto';cur=it;CAND=it.t=='tv'?cands(it.u):[it.u];ci=0;zap=list&&list.length?list:[it];ori('landscape');bars(true);if(P.hidden)history.pushState({p:1},'');P.hidden=false;$('#quality').hidden=true;const tv=live();
+function play(it,list,from){V.preload='auto';cur=it;CAND=it.t=='tv'?cands(it.u):[it.u];ci=0;tsT=0;de=0;okS=0;dead=0;zap=list&&list.length?list:[it];ori('landscape');bars(true);if(P.hidden)history.pushState({p:1},'');P.hidden=false;$('#quality').hidden=true;const tv=live();
  $('#pt').textContent=it.n;ic('#pv',tv?'sprev':'rw10');ic('#nx',tv?'snext':'fw10');ic('#pp','pause');$('#lv').hidden=!tv;UP=false;$('#sk').hidden=tv;$('#tm').hidden=tv;
  $('#pr').style.width=$('#bf').style.width='0';$('#th').style.left='0';$('#t1').textContent=$('#t2').textContent='0:00';
  $('#pf').classList.toggle('on',S.fav.includes(favK(it)));spin(true);src(it.u);wdOn();epgBar();ui();
@@ -444,7 +458,12 @@ $('#pf').onclick=()=>$('#pf').classList.toggle('on',fav(favK(cur)));
 V.onplay=()=>{UP=false;ic('#pp','pause')};V.onpause=()=>{UP=true;ic('#pp','play');ui()};
 V.onloadstart=V.onwaiting=()=>spin(true);V.onplaying=V.oncanplay=()=>spin(false);
 V.onended=()=>{if(!live()){saveP(1);const i=zap.indexOf(cur);if(zap[i+1])play(zap[i+1],zap)}};
-V.onerror=()=>{if(P.hidden||!cur)return;dbg('Erro do vídeo (código '+(V.error&&V.error.code)+')');spin(true);setTimeout(()=>{if(!P.hidden&&cur)recover()},1500)};
+V.onerror=()=>{if(P.hidden||!cur||dead)return;const e=V.error,c=e&&e.code,m=String(e&&e.message||'').replace(/\s+/g,' ').slice(0,70);
+ dbg('Erro do vídeo (código '+c+(m?': '+m:'')+')');
+ if(c==4&&!hls&&!mp){if(live()&&!started&&nextCand())return;return giveUp(M4)} /* formato não suportado: tentar de novo não resolve */
+ if(c==3&&hls&&hls.recoverMediaError)return mediaFix(hls);
+ if(c==3&&!live()&&de++>=1)return giveUp(M3);
+ spin(true);setTimeout(()=>{if(!P.hidden&&cur&&!dead)recover()},1500)};
 V.onprogress=()=>{if(V.duration&&V.buffered.length)$('#bf').style.width=V.buffered.end(V.buffered.length-1)/V.duration*100+'%'};
 let sv=0;V.ontimeupdate=()=>{if(!cur||live())return;const d=V.duration||0,t=V.currentTime;
  if(!dr){$('#pr').style.width=$('#th').style.left=d?t/d*100+'%':'0';$('#t1').textContent=fmt(t)}$('#t2').textContent=fmt(d);

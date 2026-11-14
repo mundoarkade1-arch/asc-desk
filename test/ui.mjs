@@ -127,6 +127,17 @@ await p.screenshot({ path: OUT + '/8-player.png' });
 await p.keyboard.press('m'); ok(await p.evaluate(() => document.querySelector('#v').muted), 'tecla M silencia');
 await p.keyboard.press('ArrowDown'); ok(await p.evaluate(() => document.querySelector('#v').volume) < 1 || true, 'seta para baixo ajusta volume');
 ok(await p.evaluate(() => document.documentElement.classList.contains('pl')), 'player aberto marca a página (esconde a lista por baixo)');
+// erro 4 (formato não suportado): para de rodar a bolinha e explica o motivo, sem entrar em loop
+await p.evaluate(() => { CAND = [CAND[ci] || CAND[0]]; ci = 0; hls = null; mp = null; Object.defineProperty(V, 'error', { value: { code: 4, message: 'DEMUXER_ERROR' }, configurable: true }); V.onerror(); });
+await p.waitForTimeout(200);
+ok(await p.evaluate(() => document.querySelector('#sp').hidden) && (await p.textContent('#pe')).includes('erro 4'), 'erro 4: para de carregar e mostra o motivo');
+// erro 3 (decodificação): 1ª recupera, 2ª troca o áudio, 3ª desiste com aviso
+await p.evaluate(() => { dead = 0; de = 0; window.__rc = 0; window.__sw = 0; hls = { recoverMediaError() { window.__rc++; }, swapAudioCodec() { window.__sw++; }, destroy() {} }; Object.defineProperty(V, 'error', { value: { code: 3, message: 'DECODE' }, configurable: true }); V.onerror(); V.onerror(); });
+ok(await p.evaluate(() => window.__rc === 2 && window.__sw === 1), 'erro 3: recupera e na 2ª troca o codec de áudio');
+await p.evaluate(() => { V.onerror(); });
+await p.waitForTimeout(150);
+ok((await p.textContent('#pe')).includes('erro 3') && await p.evaluate(() => document.querySelector('#sp').hidden), 'erro 3: na 3ª vez desiste e explica (sem loop)');
+await p.evaluate(() => { delete V.error; });
 await p.keyboard.press('f'); await p.waitForTimeout(200);
 ok(await p.evaluate(() => window.__fs === true && document.documentElement.classList.contains('fsw')), 'tecla F entra em tela cheia da janela');
 await p.keyboard.press('Escape'); await p.waitForTimeout(200);
