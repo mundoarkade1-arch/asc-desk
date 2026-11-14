@@ -221,3 +221,5 @@ html.lite *,html.lite *::before,html.lite *::after{animation:none!important;tran
 html.lite .rd.on i{transform:scaleX(1)}
 html.lite #boot p::after,html.lite #sp svg{animation:rot .9s linear infinite!important}
 html.lite .card:hover,html.lite .card:focus-visible{border-color:var(--a1)}
+/* com o player aberto, a bolinha pulsante do 'AO VIVO' não anima (poupa a placa de vídeo) */
+html.pl .dot{animation:none!important}

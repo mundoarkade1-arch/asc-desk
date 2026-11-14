@@ -95,3 +95,21 @@ test('filme: le adiantado (buffer grande) e entrega o arquivo inteiro sem corrom
   assert.strictEqual(n, total);
   s.close();
 });
+
+test('serve: trecho cortado no meio e baixado de novo sem o player perceber', async () => {
+  const http = require('http');
+  let n = 0;
+  const srv = http.createServer((q, r) => {
+    n++;
+    const body = Buffer.alloc(500000, 1);
+    r.writeHead(200, { 'Content-Type': 'video/mp2t', 'Content-Length': body.length });
+    if (n % 2 === 1) { r.write(body.subarray(0, 100000)); setTimeout(() => r.socket.destroy(), 30); return; }
+    r.end(body);
+  });
+  await new Promise((ok) => srv.listen(0, ok));
+  const { serve } = require('../lib/proxy');
+  const res = await serve('http://127.0.0.1:' + srv.address().port + '/s.ts', {}, { allowPrivate: true }, Readable);
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual((await res.arrayBuffer()).byteLength, 500000);
+  srv.close();
+});

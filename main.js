@@ -3,7 +3,7 @@ const { app, BrowserWindow, ipcMain, protocol, session, safeStorage, Notificatio
 const path = require('path');
 const fs = require('fs');
 const { Readable } = require('stream');
-const { open, toResponse } = require('./lib/proxy');
+const { open, serve } = require('./lib/proxy');
 const { createImageService } = require('./lib/images');
 
 const SRC = path.join(__dirname, 'src');
@@ -83,7 +83,7 @@ async function handleProtocol(request) {
     /* Imagens (capas e logos) usam conexões separadas e limitadas: não disputam banda nem conexões com o vídeo */
     const isImg = /image\//i.test(request.headers.get('accept') || '');
     try {
-      return toResponse(await open(target, hd, { signal: request.signal, image: isImg }), Readable);
+      return await serve(target, hd, { signal: request.signal, image: isImg }, Readable);
     } catch {
       return new Response(null, { status: 502 });
     }

@@ -317,7 +317,7 @@ $('#cfg').onclick=()=>{const e=expAt(),d=e?daysTo(e):0,
   +T('a13','iver','Versão','…')
   +T('a14','ipalette','Cor de destaque',ACN[ACC()])
   +T('a15','iscreen','Modo leve (PC fraco)',liteOn()?'Ligado':'Desligado')
-  +T('a16','iscreen','Leitor .ts acelerado',LS.asc_w!='0'?'Ligado':'Desligado')
+  +T('a16','iscreen','Leitor .ts acelerado (teste)',LS.asc_w=='1'?'Ligado':'Desligado')
   +(ADW&&ADW.setHwdec?T('a17','iscreen','Decodificação por hardware',LS.asc_nohw=='1'?'Desligada':'Automática'):'')
   +T('a5','ifolder','Canal do cliente',null)
   +T('a10','iscreen','Bloquear capturas',LS.asc_sc=='1'?'Ativado':'Desativado')
@@ -332,7 +332,7 @@ $('#cfg').onclick=()=>{const e=expAt(),d=e?daysTo(e):0,
  $('#a13').onclick=async()=>{const v=await ver();toast(v?'ASC DESK '+v.name+' (código '+v.code+')':'Versão indisponível.',1)};
  $('#a14').onclick=accSheet;
  $('#a15').onclick=()=>{LS.asc_lite=liteOn()?'0':'1';liteApply();$('#sheet').hidden=true;toast(liteOn()?'Modo leve ligado: menos animações e efeitos.':'Modo leve desligado.',1)};
- $('#a16').onclick=()=>{LS.asc_w=LS.asc_w!='0'?'0':'1';$('#sheet').hidden=true;toast(LS.asc_w!='0'?'Leitor .ts acelerado ligado (vale no próximo canal). Se der problema, desligue aqui.':'Leitor .ts acelerado desligado.',1)};
+ $('#a16').onclick=()=>{LS.asc_w=LS.asc_w=='1'?'0':'1';$('#sheet').hidden=true;toast(LS.asc_w=='1'?'Leitor .ts acelerado ligado (vale no próximo canal). Se der problema, desligue aqui.':'Leitor .ts acelerado desligado.',1)};
  if($('#a17'))arm('#a17',()=>{LS.asc_nohw=LS.asc_nohw=='1'?'0':'1';ADW.setHwdec(LS.asc_nohw!='1')}); /* reinicia o app para valer */
  $('#a5').onclick=pickCC;
  $('#a10').onclick=()=>{LS.asc_sc=LS.asc_sc=='1'?'0':'1';lastSc='';syncScr();$('#sheet').hidden=true;toast(LS.asc_sc=='1'?'Capturas bloqueadas nas telas de login e listas.':'Capturas liberadas.',1)}};
@@ -387,8 +387,14 @@ const HC=(lv,f)=>({xhrSetup:(x,u)=>{x.open('GET',PX(u),true)},enableWorker:true,
  abrEwmaDefaultEstimate:3e6,abrBandWidthFactor:.8,abrBandWidthUpFactor:.6});
 let PLC;const pld=()=>PLC||(PLC=(()=>{const B=Hls.DefaultConfig.loader;return class extends B{load(c,g,cb){const ok=cb.onSuccess;
   super.load(c,g,Object.assign({},cb,{onSuccess:(r,st,x,n)=>{try{if(r&&n&&n.getResponseHeader){r.url=n.getResponseHeader('X-Final-Url')||c.url}}catch{}return ok(r,st,x,n)}}))}}})());
-let mp=null,MLP;
-const TSU=/\.ts(\?|$)/i,mpOff=()=>{if(mp){try{mp.destroy()}catch{}mp=null}},
+let mp=null,MLP,RB=0,rbT=0;
+/* Canal .ts ao vivo: quando a imagem para por falta de dados, o Chromium volta a tocar com 1 ou 2 quadros e para de novo (engasgo em série).
+   Aqui o vídeo espera juntar ~3 s e só então volta (no máximo 10 s de espera). */
+function rbOff(){clearInterval(rbT);rbT=0;RB=0}
+function rbHit(){if(!mp||!started||!live()||RB||dead||P.hidden||UP)return;RB=Date.now();try{V.pause()}catch{}clearInterval(rbT);
+ rbT=setInterval(()=>{if(!RB||!mp||P.hidden||!cur||dead){rbOff();return}const b=V.buffered,ah=b.length?b.end(b.length-1)-V.currentTime:0;
+  if(ah>=3||Date.now()-RB>10000){rbOff();V.play().catch(()=>{})}},250)}
+const TSU=/\.ts(\?|$)/i,mpOff=()=>{rbOff();if(mp){try{mp.destroy()}catch{}mp=null}},
 ML=()=>window.mpegts?Promise.resolve():(MLP=MLP||new Promise(r=>{const s=document.createElement('script');s.src='vendor/mpegts.min.js';s.onload=s.onerror=()=>r();document.head.append(s)}));
 let viaNat=false,hlsLv=false,HLP,gen=0,wd=null,lastT=-1,lastBe=0,stuck=0,rc=0,started=false,UP=false;
 const HL=()=>window.Hls?Promise.resolve():(HLP=HLP||new Promise(r=>{const s=document.createElement('script');s.src='vendor/hls.min.js';s.onload=s.onerror=()=>r();document.head.append(s)}));
@@ -430,7 +436,7 @@ function src(u,at,fresh,forceNat){const g=++gen;if(live())u=CAND[ci]||u;UP=false
  if(hls){hls.destroy();hls=null}mpOff();
  /* Fluxo MPEG-TS puro: o Chromium não toca .ts sozinho, então usamos o leitor mpegts.js */
  const tsGo=()=>{viaNat=true;ML().then(()=>{if(g!=gen)return;
-   if(window.mpegts&&mpegts.isSupported()){const p=mp=mpegts.createPlayer({type:'mpegts',isLive:true,url:/^https?:\/\//i.test(u)&&nat()?location.origin+PX(u):u},{enableWorker:LS.asc_w!='0',enableStashBuffer:true,stashInitialSize:384,liveBufferLatencyChasing:true,liveBufferLatencyMaxLatency:20,liveBufferLatencyMinRemain:6,autoCleanupSourceBuffer:true,autoCleanupMaxBackwardDuration:30,autoCleanupMinBackwardDuration:12});
+   if(window.mpegts&&mpegts.isSupported()){const p=mp=mpegts.createPlayer({type:'mpegts',isLive:true,url:/^https?:\/\//i.test(u)&&nat()?location.origin+PX(u):u},{enableWorker:LS.asc_w=='1',enableStashBuffer:true,stashInitialSize:128,liveBufferLatencyChasing:false,autoCleanupSourceBuffer:true,autoCleanupMaxBackwardDuration:30,autoCleanupMinBackwardDuration:12});
     p.attachMediaElement(V);p.on(mpegts.Events.MEDIA_INFO,i=>{if(p==mp)MI=i});p.on(mpegts.Events.ERROR,(t,d,i)=>{if(p!=mp)return;const cd=t=='NetworkError'&&i&&i.code;if(!started&&[401,403,404,410].includes(cd)&&nextCand())return;
      if(V.error)return; /* o vídeo já está em erro: quem trata é o aviso do vídeo (evita reiniciar duas vezes) */
      dbg('Canal .ts: '+d+(cd?' (HTTP '+cd+')':'')+(i&&i.msg?' '+String(i.msg).slice(0,70):''));
@@ -462,7 +468,7 @@ function src(u,at,fresh,forceNat){const g=++gen;if(live())u=CAND[ci]||u;UP=false
 /* Vigia: se a imagem parar, a bolinha fica girando e o app tenta voltar sozinho (ao vivo: sem desistir) */
 function wdOn(){wdOff();lastT=-1;lastBe=0;stuck=0;rc=0;started=false;wd=setInterval(tick,1000)}
 function wdOff(){clearInterval(wd);wd=null}
-function tick(){if(P.hidden||!cur)return;if(UP&&V.paused)return;
+function tick(){if(P.hidden||!cur||RB)return;if(UP&&V.paused)return;
  if(V.paused)V.play().catch(()=>{});
  const t=V.currentTime,adv=Math.abs(t-lastT)>.25;lastT=t;
  if(!live()&&V.buffered.length){const be=V.buffered.end(V.buffered.length-1);if(be>lastBe+.25)stuck=0;lastBe=be}
@@ -490,8 +496,8 @@ const step=d=>{if(live()){const i=(zap.indexOf(cur)+d+zap.length)%zap.length;pla
 const tog=()=>V.paused?(UP=false,V.play().catch(()=>{})):(UP=true,V.pause());
 $('#pv').onclick=()=>step(-1);$('#nx').onclick=()=>step(1);$('#pp').onclick=tog;
 $('#pf').onclick=()=>$('#pf').classList.toggle('on',fav(favK(cur)));
-V.onplay=()=>{UP=false;ic('#pp','pause')};V.onpause=()=>{UP=true;ic('#pp','play');ui()};
-V.onloadstart=V.onwaiting=()=>spin(true);V.onplaying=V.oncanplay=()=>spin(false);
+V.onplay=()=>{UP=false;ic('#pp','pause')};V.onpause=()=>{if(RB)return;UP=true;ic('#pp','play');ui()};
+V.onloadstart=()=>spin(true);V.onwaiting=()=>{spin(true);rbHit()};V.onplaying=V.oncanplay=()=>spin(false);
 V.onended=()=>{if(!live()){saveP(1);const i=zap.indexOf(cur);if(zap[i+1])play(zap[i+1],zap)}};
 V.onerror=()=>{if(P.hidden||!cur||dead)return;const e=V.error,c=e&&e.code,m=String(e&&e.message||'').replace(/\s+/g,' ').slice(0,70);
  dbg('Erro do vídeo (código '+c+(m?': '+m:'')+')');
@@ -526,7 +532,7 @@ new MutationObserver(()=>{document.documentElement.classList.toggle('pl',!P.hidd
 /* Informações do canal: tela para descobrir por que um canal não toca (formato, leitor, placa de vídeo, últimos erros) */
 async function infoSheet(){if(!cur)return;ui();
  const q=V.getVideoPlaybackQuality?V.getVideoPlaybackQuality():{},M=window.MediaSource,sup=t=>M&&M.isTypeSupported&&M.isTypeSupported(t)?'sim':'não',
-  rd=hls?'hls.js (.m3u8)':mp?'mpegts.js (.ts'+(LS.asc_w!='0'?', em segundo plano':'')+')':'direto no vídeo do navegador';
+  rd=hls?'hls.js (.m3u8)':mp?'mpegts.js (.ts'+(LS.asc_w=='1'?', em segundo plano':'')+')':'direto no vídeo do navegador';
  let vc=(MI&&MI.videoCodec)||'?',ac=(MI&&MI.audioCodec)||'?';
  if(BC){vc=(BC.video&&(BC.video.levelCodec||BC.video.codec))||vc;ac=(BC.audio&&(BC.audio.levelCodec||BC.audio.codec))||ac}
  let gpu='';const mk=()=>[
