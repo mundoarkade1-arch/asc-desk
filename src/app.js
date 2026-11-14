@@ -317,7 +317,7 @@ $('#cfg').onclick=()=>{const e=expAt(),d=e?daysTo(e):0,
   +T('a13','iver','Versão','…')
   +T('a14','ipalette','Cor de destaque',ACN[ACC()])
   +T('a15','iscreen','Modo leve (PC fraco)',liteOn()?'Ligado':'Desligado')
-  +T('a16','iscreen','Leitor .ts acelerado (teste)',LS.asc_w=='1'?'Ligado':'Desligado')
+  +T('a16','iscreen','Leitor .ts acelerado',LS.asc_w!='0'?'Ligado':'Desligado')
   +(ADW&&ADW.setHwdec?T('a17','iscreen','Decodificação por hardware',LS.asc_nohw=='1'?'Desligada':'Automática'):'')
   +T('a5','ifolder','Canal do cliente',null)
   +T('a10','iscreen','Bloquear capturas',LS.asc_sc=='1'?'Ativado':'Desativado')
@@ -332,7 +332,7 @@ $('#cfg').onclick=()=>{const e=expAt(),d=e?daysTo(e):0,
  $('#a13').onclick=async()=>{const v=await ver();toast(v?'ASC DESK '+v.name+' (código '+v.code+')':'Versão indisponível.',1)};
  $('#a14').onclick=accSheet;
  $('#a15').onclick=()=>{LS.asc_lite=liteOn()?'0':'1';liteApply();$('#sheet').hidden=true;toast(liteOn()?'Modo leve ligado: menos animações e efeitos.':'Modo leve desligado.',1)};
- $('#a16').onclick=()=>{LS.asc_w=LS.asc_w=='1'?'0':'1';$('#sheet').hidden=true;toast(LS.asc_w=='1'?'Leitor .ts acelerado ligado (vale no próximo canal). Se der problema, desligue aqui.':'Leitor .ts acelerado desligado.',1)};
+ $('#a16').onclick=()=>{LS.asc_w=LS.asc_w!='0'?'0':'1';$('#sheet').hidden=true;toast(LS.asc_w!='0'?'Leitor .ts acelerado ligado (vale no próximo canal). Se der problema, desligue aqui.':'Leitor .ts acelerado desligado.',1)};
  if($('#a17'))arm('#a17',()=>{LS.asc_nohw=LS.asc_nohw=='1'?'0':'1';ADW.setHwdec(LS.asc_nohw!='1')}); /* reinicia o app para valer */
  $('#a5').onclick=pickCC;
  $('#a10').onclick=()=>{LS.asc_sc=LS.asc_sc=='1'?'0':'1';lastSc='';syncScr();$('#sheet').hidden=true;toast(LS.asc_sc=='1'?'Capturas bloqueadas nas telas de login e listas.':'Capturas liberadas.',1)}};
@@ -381,9 +381,9 @@ function saveP(done){if(!cur||live())return;const d=V.duration||0,t=V.currentTim
 const HC=(lv,f)=>({xhrSetup:(x,u)=>{x.open('GET',PX(u),true)},enableWorker:true,lowLatencyMode:false,startFragPrefetch:true,capLevelToPlayerSize:true,testBandwidth:false,progressive:false,
  capLevelOnFPSDrop:true,maxBufferLength:lv?15:30,maxMaxBufferLength:lv?30:60,maxBufferSize:lv?30e6:60e6,backBufferLength:lv?5:20,
  liveSyncDurationCount:lv?3:3,liveMaxLatencyDurationCount:lv?10:Infinity,maxBufferHole:.6,nudgeMaxRetry:8,
- manifestLoadingTimeOut:f?5000:10000,manifestLoadingMaxRetry:f?0:2,manifestLoadingRetryDelay:300,
- levelLoadingTimeOut:f?5000:8000,levelLoadingMaxRetry:f?1:4,levelLoadingRetryDelay:500,
- fragLoadingTimeOut:f?8000:15000,fragLoadingMaxRetry:f?2:6,fragLoadingRetryDelay:400,fragLoadingMaxRetryTimeout:6000,
+ manifestLoadingTimeOut:f?12000:15000,manifestLoadingMaxRetry:f?1:3,manifestLoadingRetryDelay:600,
+ levelLoadingTimeOut:f?10000:12000,levelLoadingMaxRetry:f?2:4,levelLoadingRetryDelay:600,
+ fragLoadingTimeOut:f?12000:20000,fragLoadingMaxRetry:f?3:6,fragLoadingRetryDelay:500,fragLoadingMaxRetryTimeout:8000,
  abrEwmaDefaultEstimate:3e6,abrBandWidthFactor:.8,abrBandWidthUpFactor:.6});
 let PLC;const pld=()=>PLC||(PLC=(()=>{const B=Hls.DefaultConfig.loader;return class extends B{load(c,g,cb){const ok=cb.onSuccess;
   super.load(c,g,Object.assign({},cb,{onSuccess:(r,st,x,n)=>{try{if(r&&n&&n.getResponseHeader){r.url=n.getResponseHeader('X-Final-Url')||c.url}}catch{}return ok(r,st,x,n)}}))}}})());
@@ -404,7 +404,7 @@ const XL=/^(https?:\/\/[^/]+\/(?:live\/)?[^/]+\/[^/]+\/\d+)(\.m3u8|\.ts)?(\?.*)?
 let CAND=[],ci=0;
 const fmK=u=>{try{return new URL(u).host}catch{return''}};
 const cands=u=>{const m=u.match(XL);if(!m)return[u];const b=m[1],q=m[3]||'',a=[b+'.m3u8'+q,b+'.ts'+q],w=jg('asc_fu',{})[b]||jg('asc_fm',{})[fmK(u)]||(m[2]||'').slice(1).toLowerCase();return w=='ts'?a.reverse():a};
-const nextCand=()=>{if(ci+1>=CAND.length)return false;ci++;spin(true);src(cur.u,0,1,false);return true};
+const nextCand=()=>{if(ci+1>=CAND.length)return false;ci++;spin(true);const g0=gen,u0=cur;/* espera 1,2 s: servidor com 1 conexão por login precisa soltar a antiga */setTimeout(()=>{if(g0!=gen||cur!=u0||P.hidden||dead)return;src(cur.u,0,1,false)},1200);return true};
 const M4='Este canal usa um formato que o app não consegue reproduzir neste computador (erro 4).',
  M3='Falha ao decodificar o vídeo deste canal (erro 3). O sinal deste canal pode estar com defeito ou usar um formato que este computador não suporta.',
  MO='Não consegui abrir este canal. O servidor não respondeu ou o formato não é compatível.',
@@ -417,7 +417,7 @@ function giveUp(m){elog(m);dead=1;wdOff();gen++;if(hls){try{hls.destroy()}catch{
    A versão que funcionou fica guardada para esse canal. */
 function switchCand(){ci=(ci+1)%CAND.length;
  try{const m=(CAND[ci]||'').match(XL);if(m){const o=jg('asc_fu',{});o[m[1]]=/\.ts(\?|$)/i.test(CAND[ci])?'ts':'m3u8';const ks=Object.keys(o);if(ks.length>300)delete o[ks[0]];LS.asc_fu=JSON.stringify(o)}}catch{}
- de=0;spin(true);src(cur.u,0,1,false)}
+ de=0;spin(true);const g0=gen,u0=cur;setTimeout(()=>{if(g0!=gen||cur!=u0||P.hidden||dead)return;src(cur.u,0,1,false)},1200)}
 function mediaFix(h){const n=++de,again=()=>setTimeout(()=>{if(!P.hidden&&cur&&!dead)recover()},400);
  if(h&&n<=2){if(n==2)try{h.swapAudioCodec()}catch{}h.recoverMediaError();return}
  if(!h&&n==1){again();return}
@@ -430,7 +430,7 @@ function src(u,at,fresh,forceNat){const g=++gen;if(live())u=CAND[ci]||u;UP=false
  if(hls){hls.destroy();hls=null}mpOff();
  /* Fluxo MPEG-TS puro: o Chromium não toca .ts sozinho, então usamos o leitor mpegts.js */
  const tsGo=()=>{viaNat=true;ML().then(()=>{if(g!=gen)return;
-   if(window.mpegts&&mpegts.isSupported()){const p=mp=mpegts.createPlayer({type:'mpegts',isLive:true,url:/^https?:\/\//i.test(u)&&nat()?location.origin+PX(u):u},{enableWorker:LS.asc_w=='1',enableStashBuffer:true,stashInitialSize:128,liveBufferLatencyChasing:false,autoCleanupSourceBuffer:true,autoCleanupMaxBackwardDuration:30,autoCleanupMinBackwardDuration:12});
+   if(window.mpegts&&mpegts.isSupported()){const p=mp=mpegts.createPlayer({type:'mpegts',isLive:true,url:/^https?:\/\//i.test(u)&&nat()?location.origin+PX(u):u},{enableWorker:LS.asc_w!='0',enableStashBuffer:true,stashInitialSize:384,liveBufferLatencyChasing:true,liveBufferLatencyMaxLatency:20,liveBufferLatencyMinRemain:6,autoCleanupSourceBuffer:true,autoCleanupMaxBackwardDuration:30,autoCleanupMinBackwardDuration:12});
     p.attachMediaElement(V);p.on(mpegts.Events.MEDIA_INFO,i=>{if(p==mp)MI=i});p.on(mpegts.Events.ERROR,(t,d,i)=>{if(p!=mp)return;const cd=t=='NetworkError'&&i&&i.code;if(!started&&[401,403,404,410].includes(cd)&&nextCand())return;
      if(V.error)return; /* o vídeo já está em erro: quem trata é o aviso do vídeo (evita reiniciar duas vezes) */
      dbg('Canal .ts: '+d+(cd?' (HTTP '+cd+')':'')+(i&&i.msg?' '+String(i.msg).slice(0,70):''));
@@ -467,10 +467,10 @@ function tick(){if(P.hidden||!cur)return;if(UP&&V.paused)return;
  if(adv&&V.readyState>=2){started=true;if(++okS>15)de=0;if(live()&&CAND.length>1){const e=/\.ts(\?|$)/i.test(CAND[ci]||'')?'ts':'m3u8',k=fmK(cur.u),o=jg('asc_fm',{});if(o[k]!=e){o[k]=e;try{LS.asc_fm=JSON.stringify(o)}catch{}}}stuck=0;rc=0;spin(false);return}
  stuck++;if(stuck>=2)spin(true);
  for(let i=0;i<V.buffered.length;i++){const s=V.buffered.start(i);if(s>t&&s-t<3){try{V.currentTime=s+.05}catch{}break}}
- if(live()&&!started&&stuck==15)toast('Este canal está demorando para abrir…');
- if(stuck>=(started?(live()?10:25):(live()?8:20)))recover()}
+ if(live()&&!started&&stuck==10)toast('Este canal está demorando para abrir…');
+ if(stuck>=(started?(live()?14:25):(live()?12:20)))recover()}
 function recover(){if(P.hidden||!cur)return;const nw=Date.now();if(nw-rcAt<1000)return;rcAt=nw;stuck=0;const n=++rc;
- if(live()&&!started){if(n>=5)return giveUp(MO);spin(true);if(CAND.length>1)ci=(ci+1)%CAND.length;src(cur.u,0,1,CNAT&&!viaNat);return}
+ if(live()&&!started){if(n>=5)return giveUp(MO);spin(true);if(CAND.length>1)ci=(ci+1)%CAND.length;const g0=gen,u0=cur;gen++;if(hls){try{hls.destroy()}catch{}hls=null}mpOff();setTimeout(()=>{if(cur!=u0||P.hidden||dead)return;src(cur.u,0,1,CNAT&&!viaNat)},1200);return}
  if(!live()&&n>6){wdOff();gen++;if(hls){hls.destroy();hls=null}spin(false);toast('Não foi possível reproduzir. O servidor pode estar fora do ar ou o formato não é compatível.');return}
  spin(true);
  if(hls&&n%3){if(n%3==1)hls.startLoad(-1);else hls.recoverMediaError();V.play().catch(()=>{});return}
@@ -523,7 +523,7 @@ new MutationObserver(()=>{document.documentElement.classList.toggle('pl',!P.hidd
 /* Informações do canal: tela para descobrir por que um canal não toca (formato, leitor, placa de vídeo, últimos erros) */
 async function infoSheet(){if(!cur)return;ui();
  const q=V.getVideoPlaybackQuality?V.getVideoPlaybackQuality():{},M=window.MediaSource,sup=t=>M&&M.isTypeSupported&&M.isTypeSupported(t)?'sim':'não',
-  rd=hls?'hls.js (.m3u8)':mp?'mpegts.js (.ts'+(LS.asc_w=='1'?', em segundo plano':'')+')':'direto no vídeo do navegador';
+  rd=hls?'hls.js (.m3u8)':mp?'mpegts.js (.ts'+(LS.asc_w!='0'?', em segundo plano':'')+')':'direto no vídeo do navegador';
  let vc=(MI&&MI.videoCodec)||'?',ac=(MI&&MI.audioCodec)||'?';
  if(BC){vc=(BC.video&&(BC.video.levelCodec||BC.video.codec))||vc;ac=(BC.audio&&(BC.audio.levelCodec||BC.audio.codec))||ac}
  let gpu='';const mk=()=>[
