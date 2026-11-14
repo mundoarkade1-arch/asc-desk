@@ -387,7 +387,7 @@ const HC=(lv,f)=>({xhrSetup:(x,u)=>{x.open('GET',PX(u),true)},enableWorker:true,
  abrEwmaDefaultEstimate:3e6,abrBandWidthFactor:.8,abrBandWidthUpFactor:.6});
 let PLC;const pld=()=>PLC||(PLC=(()=>{const B=Hls.DefaultConfig.loader;return class extends B{load(c,g,cb){const ok=cb.onSuccess;
   super.load(c,g,Object.assign({},cb,{onSuccess:(r,st,x,n)=>{try{if(r&&n&&n.getResponseHeader){r.url=n.getResponseHeader('X-Final-Url')||c.url}}catch{}return ok(r,st,x,n)}}))}}})());
-let mp=null,MLP,RB=0,rbT=0;
+let mp=null,MLP,RB=0,rbT=0,stl=0,stT=Date.now();
 /* Canal .ts ao vivo: quando a imagem para por falta de dados, o Chromium volta a tocar com 1 ou 2 quadros e para de novo (engasgo em série).
    Aqui o vídeo espera juntar ~3 s e só então volta (no máximo 10 s de espera). */
 function rbOff(){clearInterval(rbT);rbT=0;RB=0}
@@ -485,7 +485,7 @@ function recover(){if(P.hidden||!cur)return;const nw=Date.now();if(nw-rcAt<1000)
  if(hls&&n%3){if(n%3==1)hls.startLoad(-1);else hls.recoverMediaError();V.play().catch(()=>{});return}
  src(cur.u,live()?0:V.currentTime,1,viaNat&&live())}
 addEventListener('online',()=>{if(!P.hidden&&cur){rc=0;recover()}});
-function play(it,list,from){if(epgAbort){try{epgAbort.abort()}catch{}epgAbort=null}V.preload='auto';cur=it;CAND=it.t=='tv'?cands(it.u):[it.u];ci=0;tsT=0;de=0;okS=0;dead=0;sw=0;MI=null;BC=null;zap=list&&list.length?list:[it];ori('landscape');bars(true);if(P.hidden)history.pushState({p:1},'');P.hidden=false;$('#quality').hidden=true;const tv=live();
+function play(it,list,from){if(epgAbort){try{epgAbort.abort()}catch{}epgAbort=null}V.preload='auto';cur=it;stl=0;stT=Date.now();CAND=it.t=='tv'?cands(it.u):[it.u];ci=0;tsT=0;de=0;okS=0;dead=0;sw=0;MI=null;BC=null;zap=list&&list.length?list:[it];ori('landscape');bars(true);if(P.hidden)history.pushState({p:1},'');P.hidden=false;$('#quality').hidden=true;const tv=live();
  $('#pt').textContent=it.n;ic('#pv',tv?'sprev':'rw10');ic('#nx',tv?'snext':'fw10');ic('#pp','pause');$('#lv').hidden=!tv;UP=false;$('#sk').hidden=tv;$('#tm').hidden=tv;
  $('#pr').style.width=$('#bf').style.width='0';$('#th').style.left='0';$('#t1').textContent=$('#t2').textContent='0:00';
  $('#pf').classList.toggle('on',S.fav.includes(favK(it)));spin(true);src(it.u);wdOn();epgBar();ui();
@@ -497,7 +497,7 @@ const tog=()=>V.paused?(UP=false,V.play().catch(()=>{})):(UP=true,V.pause());
 $('#pv').onclick=()=>step(-1);$('#nx').onclick=()=>step(1);$('#pp').onclick=tog;
 $('#pf').onclick=()=>$('#pf').classList.toggle('on',fav(favK(cur)));
 V.onplay=()=>{UP=false;ic('#pp','pause')};V.onpause=()=>{if(RB)return;UP=true;ic('#pp','play');ui()};
-V.onloadstart=()=>spin(true);V.onwaiting=()=>{spin(true);rbHit()};V.onplaying=V.oncanplay=()=>spin(false);
+V.onloadstart=()=>spin(true);V.onwaiting=()=>{spin(true);if(started&&live())stl++;rbHit()};V.onplaying=V.oncanplay=()=>spin(false);
 V.onended=()=>{if(!live()){saveP(1);const i=zap.indexOf(cur);if(zap[i+1])play(zap[i+1],zap)}};
 V.onerror=()=>{if(P.hidden||!cur||dead)return;const e=V.error,c=e&&e.code,m=String(e&&e.message||'').replace(/\s+/g,' ').slice(0,70);
  dbg('Erro do vídeo (código '+c+(m?': '+m:'')+')');
@@ -530,13 +530,20 @@ document.addEventListener('fullscreenchange',fsUi);if(hasWfs)ADW.onFullscreen(v=
 /* a classe 'pl' (player aberto) é colocada pelo JS: mais leve que o seletor :has() no CSS */
 new MutationObserver(()=>{document.documentElement.classList.toggle('pl',!P.hidden);try{ADW&&ADW.playing&&ADW.playing(!P.hidden)}catch{}}).observe(P,{attributes:true,attributeFilter:['hidden']});
 /* Informações do canal: tela para descobrir por que um canal não toca (formato, leitor, placa de vídeo, últimos erros) */
+/* Resumo em uma frase: o problema é o PC (decodificação) ou a internet/servidor? */
+function verdict(){const q=V.getVideoPlaybackQuality?V.getVideoPlaybackQuality():{},tot=q.totalVideoFrames||0,dr=q.droppedVideoFrames||0,min=Math.max(.5,(Date.now()-stT)/6e4);
+ if(!started||tot<150)return 'ainda juntando dados. Deixe o canal tocar uns 30 segundos e abra esta tela de novo.';
+ const pc=dr/tot*100;
+ if(pc>=5)return 'O PC está perdendo '+Math.round(pc)+'% dos quadros. O problema é a decodificação (placa de vídeo ou processador), não a internet.';
+ if(stl/min>=2)return 'A imagem parou '+stl+' vez(es) em '+min.toFixed(1)+' min por falta de dados. O problema é a internet ou o servidor.';
+ return 'nada grave agora ('+stl+' parada(s) em '+min.toFixed(1)+' min e '+pc.toFixed(1)+'% de quadros perdidos).'}
 async function infoSheet(){if(!cur)return;ui();
  const q=V.getVideoPlaybackQuality?V.getVideoPlaybackQuality():{},M=window.MediaSource,sup=t=>M&&M.isTypeSupported&&M.isTypeSupported(t)?'sim':'não',
   rd=hls?'hls.js (.m3u8)':mp?'mpegts.js (.ts'+(LS.asc_w=='1'?', em segundo plano':'')+')':'direto no vídeo do navegador';
  let vc=(MI&&MI.videoCodec)||'?',ac=(MI&&MI.audioCodec)||'?';
  if(BC){vc=(BC.video&&(BC.video.levelCodec||BC.video.codec))||vc;ac=(BC.audio&&(BC.audio.levelCodec||BC.audio.codec))||ac}
  let gpu='';const mk=()=>[
-  'Canal: '+cur.n,'Leitor: '+rd,
+  'Canal: '+cur.n,'RESUMO: '+verdict(),'Leitor: '+rd,
   'Endereço: '+((CAND[ci]||cur.u).match(/\.(m3u8|ts)(\?|$)/i)||[,'direto'])[1],
   'Vídeo: '+vc+(MI&&MI.profile?' · perfil '+MI.profile+(MI.level?' nível '+MI.level:''):'')+(MI&&MI.chromaFormat?' · '+MI.chromaFormat:''),
   'Áudio: '+ac,
